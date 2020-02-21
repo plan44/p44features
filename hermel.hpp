@@ -17,12 +17,15 @@
 //  along with p44featured. If not, see <http://www.gnu.org/licenses/>.
 //
 
-#ifndef __p44featured_hermel_hpp__
-#define __p44featured_hermel_hpp__
+#ifndef __p44features_hermel_hpp__
+#define __p44features_hermel_hpp__
+
+#include "p44features_common.hpp"
+
+#if ENABLE_FEATURE_HERMEL
 
 #include "analogio.hpp"
 
-#include "feature.hpp"
 #include <math.h>
 
 namespace p44 {
@@ -67,5 +70,6 @@ namespace p44 {
 } // namespace p44
 
 
+#endif // ENABLE_FEATURE_HERMEL
 
-#endif /* __p44featured_hermel_hpp__ */
+#endif /* __p44features_hermel_hpp__ */

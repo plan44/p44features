@@ -18,6 +18,9 @@
 //
 
 #include "hermel.hpp"
+
+#if ENABLE_FEATURE_HERMEL
+
 #include "application.hpp"
 
 using namespace p44;
@@ -106,3 +109,4 @@ void HermelShoot::endPulse()
   pwmLeft->setValue(0);
 }
 
+#endif // ENABLE_FEATURE_HERMEL

@@ -19,10 +19,10 @@
 //  along with pixelboardd. If not, see <http://www.gnu.org/licenses/>.
 //
 
-#ifndef __p44featured_featureapi_hpp__
-#define __p44featured_featureapi_hpp__
+#ifndef __p44features_featureapi_hpp__
+#define __p44features_featureapi_hpp__
 
-#include "p44utils_common.hpp"
+#include "p44features_common.hpp"
 
 #include "jsoncomm.hpp"
 
@@ -118,7 +118,7 @@ namespace p44 {
 
 
 
-
+#error get rid of that, use real script instead
   class ScriptContext : public P44Obj
   {
     friend class FeatureApi;
@@ -239,4 +239,4 @@ namespace p44 {
 
 
 
-#endif /* __p44featured_featureapi_hpp__ */
+#endif /* __p44features_featureapi_hpp__ */

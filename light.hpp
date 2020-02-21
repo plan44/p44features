@@ -19,12 +19,15 @@
 //  along with pixelboardd. If not, see <http://www.gnu.org/licenses/>.
 //
 
-#ifndef __p44featured_light_hpp__
-#define __p44featured_light_hpp__
+#ifndef __p44features_light_hpp__
+#define __p44features_light_hpp__
+
+#include "p44features_common.hpp"
+
+#if ENABLE_FEATURE_LIGHT
 
 #include "analogio.hpp"
 
-#include "feature.hpp"
 #include <math.h>
 
 namespace p44 {
@@ -87,5 +90,6 @@ namespace p44 {
 } // namespace p44
 
 
+#endif // ENABLE_FEATURE_LIGHT
 
-#endif /* __p44featured_light_hpp__ */
+#endif /* __p44features_light_hpp__ */

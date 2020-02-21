@@ -20,12 +20,12 @@
 //
 
 
-#ifndef __p44lrgraphics__common__
-#define __p44lrgraphics__common__
+#ifndef __p44features__common__
+#define __p44features__common__
 
-#include "p44lrg_config.hpp"
+#include "p44features_config.hpp"
 #include "p44utils_common.hpp"
 
-#include "p44view.hpp"
+#include "feature.hpp"
 
-#endif /* __p44lrgraphics__common__ */
+#endif /* __p44features__common__ */

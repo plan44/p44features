@@ -19,12 +19,15 @@
 //  along with pixelboardd. If not, see <http://www.gnu.org/licenses/>.
 //
 
-#ifndef __p44featured_dispmatrix_hpp__
-#define __p44featured_dispmatrix_hpp__
+#ifndef __p44features_dispmatrix_hpp__
+#define __p44features_dispmatrix_hpp__
+
+#include "p44features_common.hpp"
+
+#if ENABLE_FEATURE_DISPMATRIX
 
 #include "ledchaincomm.hpp"
 
-#include "feature.hpp"
 #include "viewscroller.hpp"
 #include "textview.hpp"
 
@@ -133,4 +136,6 @@ namespace p44 {
 
 } // namespace p44
 
-#endif /* __p44featured_dispmatrix_hpp__ */
+#endif // ENABLE_FEATURE_DISPMATRIX
+
+#endif /* __p44features_dispmatrix_hpp__ */

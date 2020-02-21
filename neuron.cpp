@@ -20,7 +20,11 @@
 //
 
 #include "neuron.hpp"
+
+#if ENABLE_FEATURE_NEURON
+
 #include "application.hpp"
+
 #include <boost/algorithm/string.hpp>
 
 using namespace p44;
@@ -231,4 +235,4 @@ void Neuron::neuronSpike(double aValue) {
   FeatureApi::sharedApi()->sendMessage(message);
 }
 
-
+#endif // ENABLE_FEATURE_NEURON

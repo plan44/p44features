@@ -20,6 +20,9 @@
 //
 
 #include "light.hpp"
+
+#if ENABLE_FEATURE_LIGHT
+
 #include "application.hpp"
 
 using namespace p44;
@@ -129,3 +132,5 @@ double Light::brightnessToPWM(double aBrightness)
 {
   return 100*((exp(aBrightness*4/1)-1)/(exp(4)-1));
 }
+
+#endif // ENABLE_FEATURE_LIGHT

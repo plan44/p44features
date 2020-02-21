@@ -1,9 +1,9 @@
 //
-//  Copyright (c) 2016-2019 plan44.ch / Lukas Zeller, Zurich, Switzerland
+//  Copyright (c) 2016-2020 plan44.ch / Lukas Zeller, Zurich, Switzerland
 //
 //  Author: Lukas Zeller <luz@plan44.ch>
 //
-//  This file is part of p44lrgraphics.
+//  This file is part of p44features.
 //
 //  p44lrgraphics is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -20,8 +20,8 @@
 //
 
 
-#ifndef __p44lrgraphics__config__
-#define __p44lrgraphics__config__
+#ifndef __p44features__config__
+#define __p44features__config__
 
 // NOTE: This is a default (template) config file only
 //                 ******************
@@ -30,13 +30,17 @@
 //       your needs.
 //       DO NOT MODIFY THE ORIGINAL IN the p44utils directory/git submodule!
 
-#ifndef ENABLE_VIEWCONFIG
-  #define ENABLE_VIEWCONFIG 0 // not by default because it pulls in JsonObject and Application
-#endif
+// Features:
+// - generic use
+#define ENABLE_FEATURE_LIGHT 0
+#define ENABLE_FEATURE_DISPMATRIX 0
+#define ENABLE_FEATURE_RFIDS 0
+#define ENABLE_FEATURE_LEDBARS 0
+// - specific application
+#define ENABLE_FEATURE_WIFITRACK 0
+// - very specific hardware related stuff
+#define ENABLE_FEATURE_NEURON 0
+#define ENABLE_FEATURE_HERMEL 0
+#define ENABLE_FEATURE_MIXLOOP 0
 
-#ifndef ENABLE_IMAGE_SUPPORT
-  #define ENABLE_IMAGE_SUPPORT 0 // not by default because it has external dependencies
-#endif
-
-
-#endif // __p44lrgraphics__config__
+#endif // __p44features__config__

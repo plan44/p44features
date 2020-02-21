@@ -20,6 +20,9 @@
 //
 
 #include "dispmatrix.hpp"
+
+#if ENABLE_FEATURE_DISPMATRIX
+
 #include "application.hpp"
 
 #include "viewfactory.hpp"
@@ -560,3 +563,5 @@ void DispMatrix::resetScroll()
 {
   FOR_EACH_PANEL(resetScroll());
 }
+
+#endif // ENABLE_FEATURE_DISPMATRIX

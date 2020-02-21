@@ -19,10 +19,10 @@
 //  along with pixelboardd. If not, see <http://www.gnu.org/licenses/>.
 //
 
-#ifndef __p44featured_feature_hpp__
-#define __p44featured_feature_hpp__
+#ifndef __p44features_feature_hpp__
+#define __p44features_feature_hpp__
 
-#include "p44utils_common.hpp"
+#include "p44features_common.hpp"
 
 #include "featureapi.hpp"
 
@@ -76,4 +76,4 @@ namespace p44 {
 
 
 
-#endif /* __p44featured_feature_hpp__ */
+#endif /* __p44features_feature_hpp__ */

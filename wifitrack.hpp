@@ -17,10 +17,13 @@
 //  along with p44featured. If not, see <http://www.gnu.org/licenses/>.
 //
 
-#ifndef __p44featured_wifitrack_hpp__
-#define __p44featured_wifitrack_hpp__
+#ifndef __p44features_wifitrack_hpp__
+#define __p44features_wifitrack_hpp__
 
-#include "feature.hpp"
+#include "p44features_common.hpp"
+
+#if ENABLE_FEATURE_WIFITRACK
+
 #include "p44view.hpp"
 #include "dispmatrix.hpp"
 
@@ -209,5 +212,6 @@ namespace p44 {
 } // namespace p44
 
 
+#endif // ENABLE_FEATURE_WIFITRACK
 
-#endif /* __p44featured_wifitrack_hpp__ */
+#endif /* __p44features_wifitrack_hpp__ */

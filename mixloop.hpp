@@ -17,13 +17,16 @@
 //  along with p44featured. If not, see <http://www.gnu.org/licenses/>.
 //
 
-#ifndef __p44featured_mixloop_hpp__
-#define __p44featured_mixloop_hpp__
+#ifndef __p44features_mixloop_hpp__
+#define __p44features_mixloop_hpp__
+
+#include "p44features_common.hpp"
+
+#if ENABLE_FEATURE_MIXLOOP
 
 #include "ledchaincomm.hpp"
 #include "spi.hpp"
 
-#include "feature.hpp"
 #include <math.h>
 
 namespace p44 {
@@ -107,5 +110,6 @@ namespace p44 {
 } // namespace p44
 
 
+#endif // ENABLE_FEATURE_MIXLOOP
 
-#endif /* __p44featured_mixloop_hpp__ */
+#endif /* __p44features_mixloop_hpp__ */

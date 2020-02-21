@@ -24,8 +24,10 @@
 //   Note: must be before including "logger.hpp" (or anything that includes "logger.hpp")
 #define FOCUSLOGLEVEL 7
 
-
 #include "wifitrack.hpp"
+
+#if ENABLE_FEATURE_WIFITRACK
+
 #include "application.hpp"
 #include "viewstack.hpp"
 
@@ -1229,3 +1231,5 @@ ErrorPtr WifiTrack::runTool()
   #warning tbd
   return TextError::err("Not yet implemented");
 }
+
+#endif // ENABLE_FEATURE_WIFITRACK

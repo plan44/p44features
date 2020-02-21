@@ -25,6 +25,9 @@
 #define FOCUSLOGLEVEL 7
 
 #include "mixloop.hpp"
+
+#if ENABLE_FEATURE_MIXLOOP
+
 #include "application.hpp"
 
 using namespace p44;
@@ -375,3 +378,5 @@ void MixLoop::dispNormal()
   dispTicket.cancel();
   FeatureApi::sharedApi()->runJsonFile("scripts/normal.json", NULL, &scriptContext);
 }
+
+#endif // ENABLE_FEATURE_MIXLOOP
