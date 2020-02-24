@@ -22,8 +22,6 @@
 #ifndef __p44features_feature_hpp__
 #define __p44features_feature_hpp__
 
-#include "p44features_common.hpp"
-
 #include "featureapi.hpp"
 
 namespace p44 {

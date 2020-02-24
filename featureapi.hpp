@@ -118,7 +118,7 @@ namespace p44 {
 
 
 
-#error get rid of that, use real script instead
+//#error get rid of that, use real script instead
   class ScriptContext : public P44Obj
   {
     friend class FeatureApi;

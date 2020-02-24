@@ -20,7 +20,7 @@
 #ifndef __p44features_ledbars_hpp__
 #define __p44features_ledbars_hpp__
 
-#include "p44features_common.hpp"
+#include "feature.hpp"
 
 #if ENABLE_FEATURE_LEDBARS
 

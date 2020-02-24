@@ -26,6 +26,6 @@
 #include "p44features_config.hpp"
 #include "p44utils_common.hpp"
 
-#include "feature.hpp"
+//#include "featureapi.hpp"
 
 #endif /* __p44features__common__ */
