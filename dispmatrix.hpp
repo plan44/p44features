@@ -28,69 +28,26 @@
 
 #include "ledchaincomm.hpp"
 
+#include "viewstack.hpp"
 #include "viewscroller.hpp"
 #include "textview.hpp"
 
 
 namespace p44 {
 
-
-  class DispPanel : public P44Obj
-  {
-    friend class DispMatrix;
-
-    LEDChainCommPtr chain; ///< the led chain for this panel
-    int offsetX; ///< X offset within entire display
-    int cols; ///< total number of columns (including hidden LEDs)
-    int rows; ///< number of rows
-    int borderRight; ///< number of hidden LEDs at far end
-    int borderLeft; ///< number of hidden LEDs at near (connector) end
-    int orientation; ///< orientation of content
-
-    ViewScrollerPtr dispView; ///< the scroll view showing part of the contents
-    P44ViewPtr contents; ///< the view containing the contents
-
-    MLMicroSeconds lastUpdate;
-
-  public:
-
-    DispPanel(const string aChainName, int aOffsetX, int aRows, int aCols, int aBorderLeft, int aBorderRight, int aOrientation);
-    virtual ~DispPanel();
-
-    MLMicroSeconds step();
-
-
-  private:
-
-    void setOffsetX(double aOffsetX);
-    void resetScroll();
-    void setText(const string aText);
-    ErrorPtr installScene(JsonObjectPtr aSceneConfig);
-    ErrorPtr reconfigure(const string aViewLabel, JsonObjectPtr aConfig);
-    MLMicroSeconds updateDisplay();
-
-    void setBackgroundColor(const PixelColor aColor);
-    void setTextColor(const PixelColor aColor);
-    void setTextSpacing(int aSpacing);
-  };
-  typedef boost::intrusive_ptr<DispPanel> DispPanelPtr;
-
-
-
   class DispMatrix : public Feature
   {
     typedef Feature inherited;
 
-    static const int numChains = 3;
-    string chainNames[numChains];
-    DispPanelPtr panels[numChains];
-    int usedPanels;
-
-    MLTicket stepTicket;
+    LEDChainArrangementPtr ledChainArrangement;
+    P44ViewPtr rootView; // the root view
+    ViewScrollerPtr dispScroller; // the view that receives global scroll commands
+    int installationOffsetX; ///< X offset within an installation of multiple displays
+    int installationOffsetY; ///< Y offset within an installation of multiple displays
 
   public:
 
-    DispMatrix(const string aChainName1, const string aChainName2, const string aChainName3);
+    DispMatrix(LEDChainArrangementPtr aLedChainArrangement);
     virtual ~DispMatrix();
 
     /// reset the feature to uninitialized/re-initializable state
@@ -110,9 +67,6 @@ namespace p44 {
     /// @return status information object for initialized feature, bool false for uninitialized
     virtual JsonObjectPtr status() override;
 
-    /// @return the first panel's base (scroller) view
-    ViewScrollerPtr firstPanelScroller();
-
     /// set a handler that is called when one of the panels runs out of display content
     void setNeedContentHandler(NeedContentCB aNeedContentCB);
 
@@ -121,12 +75,14 @@ namespace p44 {
     /// @param aPurge if set, scrolled out views will be purged
     MLMicroSeconds getRemainingScrollTime(bool aLast, bool aPurge);
 
+    /// @return the main display scroller view (the one named "DISPSCROLLER"
+    ViewScrollerPtr getDispScroller() { return dispScroller; }
+
     /// resets scrolling: panels are reset to their initial scroll offset, scrolledView's frame is reset to 0,0
     void resetScroll();
 
   private:
 
-    void step(MLTimer &aTimer);
     void initOperation();
 
   };

@@ -43,4 +43,8 @@
 #define ENABLE_FEATURE_HERMEL 0
 #define ENABLE_FEATURE_MIXLOOP 0
 
+// dependencies
+#define ENABLE_LEDARRANGEMENT (ENABLE_FEATURE_DISPMATRIX || ENABLE_FEATURE_LEDBARS)
+
+
 #endif // __p44features__config__

@@ -119,6 +119,44 @@ FeatureApi::~FeatureApi()
 }
 
 
+JsonObjectPtr FeatureApi::jsonObjOrResource(const string &aText, ErrorPtr *aErrorP, const string aPrefix)
+{
+  JsonObjectPtr obj;
+  if (!aText.empty() && aText[0]=='{') {
+    // parse JSON
+    obj = JsonObject::objFromText(aText.c_str(), -1, aErrorP, true);
+  }
+  else {
+    // pass as a simple string, will try to load resource file
+    obj = jsonObjOrResource(JsonObject::newString(aText), aErrorP, aPrefix);
+  }
+  return obj;
+}
+
+
+JsonObjectPtr FeatureApi::jsonObjOrResource(JsonObjectPtr aConfig, ErrorPtr *aErrorP, const string aPrefix)
+{
+  ErrorPtr err;
+  if (aConfig) {
+    if (aConfig->isType(json_type_string)) {
+      // could be resource
+      string resname = aConfig->stringValue();
+      if (resname.substr(resname.size()-4)==".json") {
+        string fn = Application::sharedApplication()->resourcePath(aPrefix + resname);
+        aConfig = JsonObject::objFromFile(fn.c_str(), &err, true);
+      }
+    }
+  }
+  else {
+    err = TextError::err("missing JSON or filename");
+  }
+  if (aErrorP) *aErrorP = err;
+  return aConfig;
+}
+
+
+
+
 ErrorPtr FeatureApi::runJsonFile(const string aScriptPath, SimpleCB aFinishedCallback, ScriptContextPtr* aContextP, SubstitutionMap* aSubstitutionsP)
 {
   ErrorPtr err;

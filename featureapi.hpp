@@ -165,6 +165,18 @@ namespace p44 {
     ///   api requests from other sources (such as Web API)
     void handleRequest(ApiRequestPtr aRequest);
 
+    /// parse JSON literal or get json file from resource
+    /// @param aText the text to parse. If it is a plain string and ends on ".json", treat it as resource file path
+    /// @param aErrorP if set, parsing error is stored here
+    /// @return json or NULL if none found
+    static JsonObjectPtr jsonObjOrResource(const string &aText, ErrorPtr *aErrorP, const string aPrefix="");
+
+    /// parse JSON literal or get json file from resource
+    /// @param aConfig input json. If it is a plain string and ends on ".json", treat it as resource file path. Otherwise this json is returned
+    /// @param aErrorP if set, parsing error is stored here
+    /// @return json or NULL if none found
+    static JsonObjectPtr jsonObjOrResource(JsonObjectPtr aConfig, ErrorPtr *aErrorP, const string aPrefix="");
+
     /// execute JSON request(s) - can be called internally, no answer
     /// @param aJsonCmds a single JSON command request or a array with multiple requests
     /// @param aFinishedCallback called when all commands are done
