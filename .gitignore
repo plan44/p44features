@@ -1,0 +1,8 @@
+# Autotools specifics
+*.o
+Makefile
+Makefile.in
+.dirstamp
+.deps/
+stamp-h1
+**/build-aux/
