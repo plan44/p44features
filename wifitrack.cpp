@@ -726,7 +726,7 @@ void WifiTrack::initOperation()
   LOG(LOG_NOTICE, "initializing wifitrack");
   // display
   if (directDisplay) {
-    disp = boost::dynamic_pointer_cast<DispMatrix>(FeatureApi::sharedApi()->getFeature("text"));
+    disp = boost::dynamic_pointer_cast<DispMatrix>(FeatureApi::sharedApi()->getFeature("dispmatrix"));
     if (disp) {
       disp->setNeedContentHandler(boost::bind(&WifiTrack::needContentHandler, this));
     }
@@ -781,7 +781,7 @@ void WifiTrack::startScanner()
       string_format_append(cmd, " and \\( radio[0x16] \\> 0x%02X \\)", m);
     }
     #ifdef __APPLE__
-    #warning "hardcoded access to mixloop hermel"
+    #warning "hardcoded access to mixloop/hermel/35c3 chatty wifi device"
     //cmd = "ssh -p 22 root@hermel-40a36bc18907.local. \"tcpdump -e -i moni0 -s 2000 type mgt subtype probe-req\"";
     cmd = "ssh -p 22 root@1a8479bcaf76.cust.devices.plan44.ch \"" + cmd + "\"";
     #endif
@@ -1152,7 +1152,7 @@ void WifiTrack::displayEncounter(string aIntro, int aImageIndex, PixelColor aCol
     MLMicroSeconds rst = disp->getRemainingScrollTime(true, true); // purge old views
     if (rst<maxDisplayDelay) {
       if (LOGENABLED(LOG_INFO)) {
-        ViewScrollerPtr sc = disp->firstPanelScroller();
+        ViewScrollerPtr sc = disp->getDispScroller();
         ViewStackPtr st;
         if (sc) st = dynamic_pointer_cast<ViewStack>(sc->getScrolledView());
         if (st) {
