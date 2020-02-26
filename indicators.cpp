@@ -17,9 +17,9 @@
 //  along with pixelboardd. If not, see <http://www.gnu.org/licenses/>.
 //
 
-#include "ledbars.hpp"
+#include "indicators.hpp"
 
-#if ENABLE_FEATURE_LEDBARS
+#if ENABLE_FEATURE_INDICATORS
 
 #include "application.hpp"
 
@@ -27,4 +27,4 @@ using namespace p44;
 
 
 
-#endif // ENABLE_FEATURE_LEDBARS
+#endif // ENABLE_FEATURE_INDICATORS

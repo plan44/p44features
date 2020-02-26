@@ -22,7 +22,7 @@
 
 #include "feature.hpp"
 
-#if ENABLE_FEATURE_LEDBARS
+#if ENABLE_FEATURE_INDICATORS
 
 #include "ledchaincomm.hpp"
 
@@ -88,6 +88,6 @@ namespace p44 {
 } // namespace p44
 
 
-#endif // ENABLE_FEATURE_LEDBARS
+#endif // ENABLE_FEATURE_INDICATORS
 
 #endif /* __p44features_ledbars_hpp__ */
