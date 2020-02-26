@@ -191,6 +191,7 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
       return ErrorPtr();
     }
     else if (cmd=="fade") {
+      #if ENABLE_ANIMATION
       int to = 255;
       MLMicroSeconds t = 300*MilliSecond;
       if (data->get("to", o, true)) {
@@ -199,7 +200,8 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
       if (data->get("t", o, true)) {
         t = o->doubleValue()*MilliSecond;
       }
-      if (dispScroller) dispScroller->fadeTo(to, t);
+      if (dispScroller) dispScroller->animatorFor("alpha")->animate(to, t);
+      #endif
       return Error::ok();
     }
     else if (cmd=="reconfigure") {
