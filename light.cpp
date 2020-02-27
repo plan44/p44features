@@ -74,7 +74,7 @@ ErrorPtr Light::fade(ApiRequestPtr aRequest)
 {
   JsonObjectPtr data = aRequest->getRequest();
   JsonObjectPtr o;
-  double from = current();
+  double from = -1;
   if (data->get("from", o, true)) from = o->doubleValue();
   double to = 1;
   if (data->get("to", o, true)) to = o->doubleValue();
@@ -99,28 +99,16 @@ void Light::initOperation()
 
 void Light::fade(double aFrom, double aTo, MLMicroSeconds aFadeTime, MLMicroSeconds aStartTime)
 {
-  if(fabs(aFrom - aTo) < 1e-4) return;
-  if (aTo!=currentValue || (aFrom!=currentValue && aFadeTime>0)) {
-    currentValue = aFrom;
-    to = aTo;
-    MLMicroSeconds numSteps = aFadeTime / dt;
-    dv = (aTo - aFrom) / (numSteps>0 ? numSteps : 1);
-    ticket.executeOnceAt(boost::bind(&Light::update, this, _1), aStartTime);
-  }
+  double startValue;
+  animator = ValueAnimatorPtr(new ValueAnimator(pwmDimmer->getValueSetter(startValue)));
+  if (aFrom>=0) startValue = aFrom;
+  animator->from(startValue);
+  ticket.executeOnceAt(boost::bind(&Light::startFading, this, aTo, aFadeTime), aStartTime);
 }
 
-void Light::update(MLTimer &aTimer)
+void Light::startFading(double aTo, MLMicroSeconds aFadeTime)
 {
-  double newValue = currentValue + dv;
-  bool done = false;
-  if((dv > 0 && newValue >= to) || (dv < 0 && newValue <= to)) {
-    newValue = to;
-    done = true;
-  }
-  currentValue = newValue;
-  LOG(LOG_DEBUG, "New light value = %.1f", currentValue);
-  pwmDimmer->setValue(brightnessToPWM(currentValue));
-  if(!done) MainLoop::currentMainLoop().retriggerTimer(aTimer, dt);
+  animator->animate(aTo, aFadeTime, NULL, dt);
 }
 
 double Light::current()

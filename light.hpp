@@ -27,6 +27,7 @@
 #if ENABLE_FEATURE_LIGHT
 
 #include "analogio.hpp"
+#include "valueanimator.hpp"
 
 #include <math.h>
 
@@ -37,6 +38,9 @@ namespace p44 {
     typedef Feature inherited;
 
     AnalogIoPtr pwmDimmer;
+    ValueAnimatorPtr animator;
+
+
     double currentValue = 0;
     const MLMicroSeconds dt = 20 * MilliSecond;
     double to;
@@ -81,7 +85,7 @@ namespace p44 {
     //                    e   - 1
     //
     double brightnessToPWM(double aBrightness);
-    void update(MLTimer &aTimer);
+    void startFading(double aTo, MLMicroSeconds aFadeTime);
 
     ErrorPtr fade(ApiRequestPtr aRequest);
 
