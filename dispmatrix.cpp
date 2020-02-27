@@ -39,9 +39,11 @@ using namespace p44;
 
 // MARK: ===== DispMatrix
 
+#define FEATURE_NAME "dispmatrix"
+
 
 DispMatrix::DispMatrix(LEDChainArrangementPtr aLedChainArrangement) :
-  inherited("dispmatrix"),
+  inherited(FEATURE_NAME),
   ledChainArrangement(aLedChainArrangement),
   installationOffsetX(0),
   installationOffsetY(0)
@@ -50,10 +52,10 @@ DispMatrix::DispMatrix(LEDChainArrangementPtr aLedChainArrangement) :
   if (ledChainArrangement) {
     // check for commandline-triggered standalone operation, adding views from config
     string cfgstr;
-    if (CmdLineApp::sharedCmdLineApp()->getStringOption("dispmatrix", cfgstr)) {
+    if (CmdLineApp::sharedCmdLineApp()->getStringOption(FEATURE_NAME, cfgstr)) {
       // json root view config or name of resource json file
       ErrorPtr err;
-      JsonObjectPtr cfg = FeatureApi::jsonObjOrResource(cfgstr, &err, "dispmatrix/");
+      JsonObjectPtr cfg = Application::jsonObjOrResource(cfgstr, &err, FEATURE_NAME "/");
       if (Error::isOK(err)) {
         initialize(cfg);
       }
@@ -90,6 +92,8 @@ ErrorPtr DispMatrix::initialize(JsonObjectPtr aInitData)
   JsonObjectPtr o;
   ErrorPtr err;
   if (ledChainArrangement) {
+    // get the ledChainArrangement's current rootview
+    rootView = ledChainArrangement->getRootView();
     if (aInitData->get("installationX", o)) {
       installationOffsetX = o->int32Value();
     }
@@ -98,10 +102,10 @@ ErrorPtr DispMatrix::initialize(JsonObjectPtr aInitData)
     }
     if (aInitData->get("rootview", o)) {
       // configure the root view
-      err = rootView->configureView(o);
+      err = rootView->configureFromResourceOrObj(o, FEATURE_NAME "/");
     }
-    else {
-      // use default scroller root view
+    else if (!rootView) {
+      // install default scroller root view
       PixelRect r = ledChainArrangement->totalCover();
       dispScroller = ViewScrollerPtr(new ViewScroller);
       dispScroller->setLabel("DISPSCROLLER");
@@ -185,32 +189,18 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
       if (data->get("last", o)) last = o->boolValue();
       if (data->get("purge", o)) purge = o->boolValue();
       JsonObjectPtr answer = JsonObject::newObj();
-      answer->add("remainingtime", JsonObject::newDouble(getRemainingScrollTime(last, purge)/MilliSecond));
+      answer->add("remainingtime", JsonObject::newDouble((double)getRemainingScrollTime(last, purge)/Second));
       // - return
       aRequest->sendResponse(answer, ErrorPtr());
       return ErrorPtr();
     }
-    else if (cmd=="fade") {
-      #if ENABLE_ANIMATION
-      int to = 255;
-      MLMicroSeconds t = 300*MilliSecond;
-      if (data->get("to", o, true)) {
-        to = o->doubleValue()*255;
-      }
-      if (data->get("t", o, true)) {
-        t = o->doubleValue()*MilliSecond;
-      }
-      if (dispScroller) dispScroller->animatorFor("alpha")->animate(to, t);
-      #endif
-      return Error::ok();
-    }
-    else if (cmd=="reconfigure") {
+    else if (cmd=="configure") {
       if (data->get("view", o)) {
         string viewLabel = o->stringValue();
         JsonObjectPtr viewConfig = data->get("config");
         if (viewConfig) {
           P44ViewPtr view = rootView->getView(viewLabel);
-          if (view) view->configureView(viewConfig);
+          if (view) view->configureFromResourceOrObj(viewConfig, "dispmatrix/");
         }
       }
       return TextError::err("missing 'view' and/or 'config'");
@@ -219,18 +209,9 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
   }
   else {
     // decode properties
-    if (data->get("text", o, true)) {
-      string msg = o->stringValue();
-      TextViewPtr textview = boost::dynamic_pointer_cast<TextView>(rootView->getView("TEXT"));
-      if (textview) textview->setText(msg);
-    }
     if (data->get("scene", o, true)) {
-      if (o->isType(json_type_string)) {
-        // scene file path, load it
-        string scenePath = o->stringValue();
-        o = JsonObject::objFromFile(Application::sharedApplication()->resourcePath(scenePath).c_str(), &err);
-        if (!Error::isOK(err)) return err;
-      }
+      o = Application::jsonObjOrResource(o, &err, FEATURE_NAME "/");
+      if (!Error::isOK(err)) return err;
       if (dispScroller) {
         P44ViewPtr sceneView = dispScroller->getScrolledView();
         if (sceneView) {
@@ -250,21 +231,6 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
           return err;
         dispScroller->setScrolledView(sceneView);
       }
-    }
-    if (data->get("color", o, true)) {
-      PixelColor p = webColorToPixel(o->stringValue());
-      TextViewPtr textview = boost::dynamic_pointer_cast<TextView>(rootView->getView("TEXT"));
-      if (textview) textview->setForegroundColor(p);
-    }
-    if (data->get("backgroundcolor", o, true)) {
-      PixelColor p = webColorToPixel(o->stringValue());
-      P44ViewPtr contentView = dispScroller->getScrolledView();
-      if (contentView) contentView->setBackgroundColor(p);
-    }
-    if (data->get("spacing", o, true)) {
-      int spacing = o->int32Value();
-      TextViewPtr textview = boost::dynamic_pointer_cast<TextView>(rootView->getView("TEXT"));
-      if (textview) textview->setTextSpacing(spacing);
     }
     if (data->get("offsetx", o, true)) {
       double offs = o->doubleValue();
@@ -291,17 +257,6 @@ JsonObjectPtr DispMatrix::status()
       answer->add("scrollstepx", JsonObject::newDouble(dispScroller->getStepX()));
       answer->add("scrollstepy", JsonObject::newDouble(dispScroller->getStepY()));
       answer->add("scrollsteptime", JsonObject::newDouble(dispScroller->getScrollStepInterval()/MilliSecond));
-      P44ViewPtr contents = dispScroller->getScrolledView();
-      if (contents) {
-        answer->add("backgroundcolor", JsonObject::newString(pixelToWebColor(contents->getBackgroundColor())));
-        answer->add("color", JsonObject::newString(pixelToWebColor(contents->getForegroundColor())));
-        answer->add("alpha", JsonObject::newInt32(contents->getAlpha()));
-        TextViewPtr message = boost::dynamic_pointer_cast<TextView>(contents);
-        if (message) {
-          answer->add("text", JsonObject::newString(message->getText()));
-          answer->add("spacing", JsonObject::newInt32(message->getTextSpacing()));
-        }
-      }
     }
   }
   return answer;
