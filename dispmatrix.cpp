@@ -163,7 +163,7 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
         steps = o->int64Value();
       }
       if (data->get("interval", o, true)) {
-        interval = o->doubleValue()*MilliSecond;
+        interval = o->doubleValue()*Second;
       }
       if (data->get("roundoffsets", o, true)) {
         roundoffsets = o->boolValue();
@@ -175,7 +175,7 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
           st = (uint64_t)((MainLoop::unixtime()+10*Second)/10/Second)*10*Second;
         }
         else {
-          st = o->int64Value()*MilliSecond;
+          st = o->doubleValue()*Second;
         }
         start = MainLoop::unixTimeToMainLoopTime(st);
       }
@@ -200,7 +200,8 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
         JsonObjectPtr viewConfig = data->get("config");
         if (viewConfig) {
           P44ViewPtr view = rootView->getView(viewLabel);
-          if (view) view->configureFromResourceOrObj(viewConfig, "dispmatrix/");
+          if (view) err = view->configureFromResourceOrObj(viewConfig, "dispmatrix/");
+          return err;
         }
       }
       return TextError::err("missing 'view' and/or 'config'");
@@ -249,14 +250,14 @@ JsonObjectPtr DispMatrix::status()
 {
   JsonObjectPtr answer = inherited::status();
   if (answer->isType(json_type_object)) {
-    answer->add("unixtime", JsonObject::newInt64(MainLoop::unixtime()/MilliSecond));
+    answer->add("unixtime", JsonObject::newInt64((double)MainLoop::unixtime()/Second));
     if (dispScroller) {
       answer->add("brightness", JsonObject::newDouble((double)dispScroller->getAlpha()/255));
       answer->add("scrolloffsetx", JsonObject::newDouble(dispScroller->getOffsetX()));
       answer->add("scrolloffsety", JsonObject::newDouble(dispScroller->getOffsetY()));
       answer->add("scrollstepx", JsonObject::newDouble(dispScroller->getStepX()));
       answer->add("scrollstepy", JsonObject::newDouble(dispScroller->getStepY()));
-      answer->add("scrollsteptime", JsonObject::newDouble(dispScroller->getScrollStepInterval()/MilliSecond));
+      answer->add("scrollsteptime", JsonObject::newDouble((double)dispScroller->getScrollStepInterval()/Second));
     }
   }
   return answer;

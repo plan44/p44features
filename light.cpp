@@ -79,9 +79,9 @@ ErrorPtr Light::fade(ApiRequestPtr aRequest)
   double to = 1;
   if (data->get("to", o, true)) to = o->doubleValue();
   MLMicroSeconds t = 300*MilliSecond;
-  if (data->get("t", o, true)) t = o->int64Value() * MilliSecond;
+  if (data->get("t", o, true)) t = o->int64Value() * Second;
   MLMicroSeconds start = MainLoop::now();
-  if (data->get("start", o, true)) start = MainLoop::unixTimeToMainLoopTime(o->int64Value() * MilliSecond);
+  if (data->get("start", o, true)) start = MainLoop::unixTimeToMainLoopTime(o->doubleValue() * Second);
   fade(from, to, t, start);
   return Error::ok();
 }

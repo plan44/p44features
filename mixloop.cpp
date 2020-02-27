@@ -96,7 +96,7 @@ ErrorPtr MixLoop::processRequest(ApiRequestPtr aRequest)
       accelThreshold = o->int32Value();
     }
     if (data->get("interval", o, true)) {
-      interval = o->doubleValue()*MilliSecond;
+      interval = o->doubleValue()*Second;
     }
     if (data->get("accelChangeCutoff", o, true)) {
       accelChangeCutoff = o->doubleValue();
@@ -120,10 +120,10 @@ ErrorPtr MixLoop::processRequest(ApiRequestPtr aRequest)
       hitStartMinIntegral = o->doubleValue();
     }
     if (data->get("hitWindowStart", o, true)) {
-      hitWindowStart = o->doubleValue()*MilliSecond;
+      hitWindowStart = o->doubleValue()*Second;
     }
     if (data->get("hitWindowDuration", o, true)) {
-      hitWindowDuration = o->doubleValue()*MilliSecond;
+      hitWindowDuration = o->doubleValue()*Second;
     }
     if (data->get("hitMinAccelChange", o, true)) {
       hitMinAccelChange = o->doubleValue();
@@ -138,10 +138,10 @@ ErrorPtr MixLoop::processRequest(ApiRequestPtr aRequest)
       integralDispScaling = o->doubleValue();
     }
     if (data->get("hitFlashTime", o, true)) {
-      hitFlashTime = o->doubleValue()*MilliSecond;
+      hitFlashTime = o->doubleValue()*Second;
     }
     if (data->get("hitDispTime", o, true)) {
-      hitDispTime = o->doubleValue()*MilliSecond;
+      hitDispTime = o->doubleValue()*Second;
     }
     return err ? err : Error::ok();
   }
@@ -153,7 +153,7 @@ JsonObjectPtr MixLoop::status()
   JsonObjectPtr answer = inherited::status();
   if (answer->isType(json_type_object)) {
     answer->add("accelThreshold", JsonObject::newInt32(accelThreshold));
-    answer->add("interval", JsonObject::newDouble((double)interval/MilliSecond));
+    answer->add("interval", JsonObject::newDouble((double)interval/Second));
     answer->add("accelChangeCutoff", JsonObject::newDouble(accelChangeCutoff));
     answer->add("accelMaxChange", JsonObject::newDouble(accelMaxChange));
     answer->add("accelIntegrationGain", JsonObject::newDouble(accelIntegrationGain));
@@ -161,14 +161,14 @@ JsonObjectPtr MixLoop::status()
     answer->add("integralFadeScaling", JsonObject::newDouble(integralFadeScaling));
     answer->add("maxIntegral", JsonObject::newDouble(maxIntegral));
     answer->add("hitStartMinIntegral", JsonObject::newDouble(hitStartMinIntegral));
-    answer->add("hitWindowStart", JsonObject::newDouble((double)hitWindowStart/MilliSecond));
-    answer->add("hitWindowDuration", JsonObject::newDouble((double)hitWindowDuration/MilliSecond));
+    answer->add("hitWindowStart", JsonObject::newDouble((double)hitWindowStart/Second));
+    answer->add("hitWindowDuration", JsonObject::newDouble((double)hitWindowDuration/Second));
     answer->add("hitMinAccelChange", JsonObject::newDouble(hitMinAccelChange));
     answer->add("numLeds", JsonObject::newInt32(numLeds));
     answer->add("integralDispOffset", JsonObject::newDouble(integralDispOffset));
     answer->add("integralDispScaling", JsonObject::newDouble(integralDispScaling));
-    answer->add("hitFlashTime", JsonObject::newDouble((double)hitFlashTime/MilliSecond));
-    answer->add("hitDispTime", JsonObject::newDouble((double)hitDispTime/MilliSecond));
+    answer->add("hitFlashTime", JsonObject::newDouble((double)hitFlashTime/Second));
+    answer->add("hitDispTime", JsonObject::newDouble((double)hitDispTime/Second));
   }
   return answer;
 }

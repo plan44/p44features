@@ -78,7 +78,7 @@ ErrorPtr HermelShoot::shoot(ApiRequestPtr aRequest)
   double intensity = 1; // full power
   if (data->get("intensity", o, true)) intensity = o->doubleValue();
   MLMicroSeconds pulseLength = 500*MilliSecond;
-  if (data->get("pulse", o, true)) pulseLength = o->int64Value() * MilliSecond;
+  if (data->get("pulse", o, true)) pulseLength = o->int64Value() * Second;
   shoot(angle, intensity, pulseLength);
   return Error::ok();
 }
