@@ -139,31 +139,37 @@ ErrorPtr FeatureApi::runJsonFile(const string aScriptPath, SimpleCB aFinishedCal
 }
 
 
-ErrorPtr FeatureApi::runJsonString(string aJsonString, SimpleCB aFinishedCallback, ScriptContextPtr* aContextP, SubstitutionMap* aSubstitutionsP)
+void FeatureApi::substituteVars(string &aString, SubstitutionMap *aSubstitutionsP, ErrorPtr &err)
 {
-  ErrorPtr err;
   if (aSubstitutionsP) {
     // perform substitution: syntax of placeholders:
     //   @{name}
     size_t p = 0;
-    while ((p = aJsonString.find("@{",p))!=string::npos) {
-      size_t e = aJsonString.find("}",p+2);
+    while ((p = aString.find("@{",p))!=string::npos) {
+      size_t e = aString.find("}",p+2);
       if (e==string::npos) {
         // syntactically incorrect, no closing "}"
-        err = TextError::err("unterminated placeholder: %s", aJsonString.c_str()+p);
+        err = TextError::err("unterminated placeholder: %s", aString.c_str()+p);
         break;
       }
-      string var = aJsonString.substr(p+2,e-2-p);
+      string var = aString.substr(p+2,e-2-p);
       SubstitutionMap::iterator pos = aSubstitutionsP->find(var);
       if (pos==aSubstitutionsP->end()) {
         err = TextError::err("unknown placeholder: %s", var.c_str());
         break;
       }
       // replace, even if rep is empty
-      aJsonString.replace(p, e-p+1, pos->second);
+      aString.replace(p, e-p+1, pos->second);
       p+=pos->second.size();
     }
   }
+}
+
+
+ErrorPtr FeatureApi::runJsonString(string aJsonString, SimpleCB aFinishedCallback, ScriptContextPtr* aContextP, SubstitutionMap* aSubstitutionsP)
+{
+  ErrorPtr err;
+  substituteVars(aJsonString, aSubstitutionsP, err);
   if (Error::isOK(err)) {
     JsonObjectPtr script = JsonObject::objFromText(aJsonString.c_str(), -1, &err);
     if (Error::isOK(err) && script) {

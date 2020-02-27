@@ -67,7 +67,7 @@ namespace p44 {
     /// @return status information object for initialized feature, bool false for uninitialized
     virtual JsonObjectPtr status() override;
 
-    /// set a handler that is called when one of the panels runs out of display content
+    /// set a handler that is called when the display runs out of display content (scrolled out)
     void setNeedContentHandler(NeedContentCB aNeedContentCB);
 
     /// get the remaining time until the first (aLast==false) or the last (aLast==true) panel runs out of content

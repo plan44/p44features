@@ -25,27 +25,36 @@
 #if ENABLE_FEATURE_INDICATORS
 
 #include "ledchaincomm.hpp"
+#include "viewstack.hpp"
 
 namespace p44 {
 
-  /*
-  class Light : public Feature
+  class IndicatorEffect : public P44Obj
+  {
+  public:
+    MLTicket ticket;
+    P44ViewPtr view;
+  };
+  typedef boost::intrusive_ptr<IndicatorEffect> IndicatorEffectPtr;
+
+
+  class Indicators : public Feature
   {
     typedef Feature inherited;
 
-    AnalogIoPtr pwmDimmer;
-    double currentValue = 0;
-    const MLMicroSeconds dt = 20 * MilliSecond;
-    double to;
-    double dv;
-    MLTicket ticket;
+    LEDChainArrangementPtr ledChainArrangement;
+    ViewStackPtr indicatorsView; // the view to put indicators onto
+
+    typedef std::list<IndicatorEffectPtr> EffectsList;
+    EffectsList activeIndicators;
 
   public:
 
-    Light(AnalogIoPtr aPwmDimmer);
+    Indicators(LEDChainArrangementPtr aLedChainArrangement);
+    virtual ~Indicators();
 
-    void fade(double aFrom, double aTo, MLMicroSeconds aFadeTime, MLMicroSeconds aStartTime);
-    double current();
+    /// reset the feature to uninitialized/re-initializable state
+    virtual void reset() override;
 
     /// initialize the feature
     /// @param aInitData the init data object specifying feature init details
@@ -61,29 +70,17 @@ namespace p44 {
     /// @return status information object for initialized feature, bool false for uninitialized
     virtual JsonObjectPtr status() override;
 
+    /// stop all running indicator effects
+    void stop();
+
   private:
 
     void initOperation();
 
-    // PWM    = PWM value
-    // maxPWM = max PWM value
-    // B      = brightness
-    // maxB   = max brightness value
-    // S      = dim Curve Exponent (1=linear, 2=quadratic, ...)
-    //
-    //                   (B*S/maxB)
-    //                 e            - 1
-    // PWM =  maxPWM * ----------------
-    //                      S
-    //                    e   - 1
-    //
-    double brightnessToPWM(double aBrightness);
-    void update(MLTimer &aTimer);
-
-    ErrorPtr fade(ApiRequestPtr aRequest);
+    void runEffect(P44ViewPtr aView, MLMicroSeconds aDuration, JsonObjectPtr aConfig);
+    void effectDone(IndicatorEffectPtr aEffect);
 
   };
-  */
 
 } // namespace p44
 

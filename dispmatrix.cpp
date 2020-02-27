@@ -87,7 +87,7 @@ DispMatrix::~DispMatrix()
 
 ErrorPtr DispMatrix::initialize(JsonObjectPtr aInitData)
 {
-  LOG(LOG_NOTICE, "initializing dispmatrix");
+  LOG(LOG_NOTICE, "initializing " FEATURE_NAME);
   reset();
   JsonObjectPtr o;
   ErrorPtr err;
@@ -104,8 +104,8 @@ ErrorPtr DispMatrix::initialize(JsonObjectPtr aInitData)
       // configure the root view
       err = rootView->configureFromResourceOrObj(o, FEATURE_NAME "/");
     }
-    else if (!rootView) {
-      // install default scroller root view
+    if (!rootView) {
+      // no existing or explicitly initialized rootview: install default scroller as root
       PixelRect r = ledChainArrangement->totalCover();
       dispScroller = ViewScrollerPtr(new ViewScroller);
       dispScroller->setLabel("DISPSCROLLER");
@@ -289,7 +289,7 @@ JsonObjectPtr DispMatrix::status()
 {
   JsonObjectPtr answer = inherited::status();
   if (answer->isType(json_type_object)) {
-    answer->add("unixtime", JsonObject::newInt64((double)MainLoop::unixtime()/Second));
+    answer->add("unixtime", JsonObject::newDouble((double)MainLoop::unixtime()/Second));
     if (dispScroller) {
       answer->add("brightness", JsonObject::newInt32(dispScroller->getAlpha()));
       answer->add("scrolloffsetx", JsonObject::newDouble(dispScroller->getOffsetX()));
@@ -319,8 +319,13 @@ JsonObjectPtr DispMatrix::status()
 
 void DispMatrix::initOperation()
 {
-  dispScroller = boost::dynamic_pointer_cast<ViewScroller>(rootView->getView("DISPSCROLLER"));
-  if (ledChainArrangement) ledChainArrangement->begin(true);
+  if (ledChainArrangement) {
+    dispScroller = boost::dynamic_pointer_cast<ViewScroller>(rootView->getView("DISPSCROLLER"));
+    ledChainArrangement->begin(true);
+  }
+  else {
+    LOG(LOG_WARNING, FEATURE_NAME ": NOP: no ledchain connected");
+  }
   setInitialized();
 }
 

@@ -173,6 +173,9 @@ namespace p44 {
 
     typedef map<string, string> SubstitutionMap;
 
+
+    void substituteVars(string &aString, SubstitutionMap *aSubstitutionsP, ErrorPtr &err);
+
     /// execute JSON request(s) from a string
     /// @param aJsonString JSON string to execute
     /// @param aFinishedCallback called when all commands are done
@@ -227,7 +230,7 @@ namespace p44 {
   class FeatureApiError : public Error
   {
   public:
-    static const char *domain() { return "LehtdApiError"; }
+    static const char *domain() { return "FeatureApiError"; }
     virtual const char *getErrorDomain() const { return FeatureApiError::domain(); };
     FeatureApiError() : Error(Error::NotOK) {};
 
