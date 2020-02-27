@@ -119,44 +119,6 @@ FeatureApi::~FeatureApi()
 }
 
 
-JsonObjectPtr FeatureApi::jsonObjOrResource(const string &aText, ErrorPtr *aErrorP, const string aPrefix)
-{
-  JsonObjectPtr obj;
-  if (!aText.empty() && aText[0]=='{') {
-    // parse JSON
-    obj = JsonObject::objFromText(aText.c_str(), -1, aErrorP, true);
-  }
-  else {
-    // pass as a simple string, will try to load resource file
-    obj = jsonObjOrResource(JsonObject::newString(aText), aErrorP, aPrefix);
-  }
-  return obj;
-}
-
-
-JsonObjectPtr FeatureApi::jsonObjOrResource(JsonObjectPtr aConfig, ErrorPtr *aErrorP, const string aPrefix)
-{
-  ErrorPtr err;
-  if (aConfig) {
-    if (aConfig->isType(json_type_string)) {
-      // could be resource
-      string resname = aConfig->stringValue();
-      if (resname.substr(resname.size()-4)==".json") {
-        string fn = Application::sharedApplication()->resourcePath(aPrefix + resname);
-        aConfig = JsonObject::objFromFile(fn.c_str(), &err, true);
-      }
-    }
-  }
-  else {
-    err = TextError::err("missing JSON or filename");
-  }
-  if (aErrorP) *aErrorP = err;
-  return aConfig;
-}
-
-
-
-
 ErrorPtr FeatureApi::runJsonFile(const string aScriptPath, SimpleCB aFinishedCallback, ScriptContextPtr* aContextP, SubstitutionMap* aSubstitutionsP)
 {
   ErrorPtr err;
@@ -250,7 +212,7 @@ void FeatureApi::executeNextCmd(JsonObjectPtr aCmds, int aIndex, ScriptContextPt
   // check for delay
   JsonObjectPtr o = cmd->get("delayby");
   if (o) {
-    delay = o->doubleValue()*MilliSecond;
+    delay = o->doubleValue()*Second;
   }
   // now execute
   aContext->scriptTicket.executeOnce(boost::bind(&FeatureApi::runCmd, this, aCmds, aIndex, aContext, aFinishedCallback), delay);
@@ -473,7 +435,7 @@ ErrorPtr FeatureApi::init(ApiRequestPtr aRequest)
 ErrorPtr FeatureApi::now(ApiRequestPtr aRequest)
 {
   JsonObjectPtr answer = JsonObject::newObj();
-  answer->add("now", JsonObject::newInt64(MainLoop::unixtime()/MilliSecond));
+  answer->add("now", JsonObject::newInt64((double)MainLoop::unixtime()/Second));
   aRequest->sendResponse(answer, ErrorPtr());
   return ErrorPtr();
 }
@@ -493,7 +455,7 @@ ErrorPtr FeatureApi::status(ApiRequestPtr aRequest)
   // - MAC address and IPv4
   answer->add("macaddress", JsonObject::newString(macAddressToString(macAddress(), ':')));
   answer->add("ipv4", JsonObject::newString(ipv4ToString(ipv4Address())));
-  answer->add("now", JsonObject::newInt64(MainLoop::unixtime()/MilliSecond));
+  answer->add("now", JsonObject::newInt64((double)MainLoop::unixtime()/Second));
   answer->add("version", JsonObject::newString(Application::sharedApplication()->version()));
   // - return
   aRequest->sendResponse(answer, ErrorPtr());
