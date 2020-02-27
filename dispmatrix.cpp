@@ -194,6 +194,20 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
       aRequest->sendResponse(answer, ErrorPtr());
       return ErrorPtr();
     }
+    else if (cmd=="fade") {
+      #if ENABLE_ANIMATION
+      int to = 255;
+      MLMicroSeconds t = 300*MilliSecond;
+      if (data->get("to", o, true)) {
+        to = o->int32Value();
+      }
+      if (data->get("t", o, true)) {
+        t = o->doubleValue()*Second;
+      }
+      if (dispScroller) dispScroller->animatorFor("alpha")->animate(to, t);
+      #endif
+      return Error::ok();
+    }
     else if (cmd=="configure") {
       if (data->get("view", o)) {
         string viewLabel = o->stringValue();
@@ -233,11 +247,36 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
         dispScroller->setScrolledView(sceneView);
       }
     }
+    if (data->get("text", o, true)) {
+      string msg = o->stringValue();
+      TextViewPtr textview = boost::dynamic_pointer_cast<TextView>(rootView->getView("TEXT"));
+      if (textview) textview->setText(msg);
+    }
+    if (data->get("color", o, true)) {
+      // of the text
+      PixelColor p = webColorToPixel(o->stringValue());
+      TextViewPtr textview = boost::dynamic_pointer_cast<TextView>(rootView->getView("TEXT"));
+      if (textview) textview->setForegroundColor(p);
+    }
+    if (data->get("spacing", o, true)) {
+      // of the text
+      int spacing = o->int32Value();
+      TextViewPtr textview = boost::dynamic_pointer_cast<TextView>(rootView->getView("TEXT"));
+      if (textview) textview->setTextSpacing(spacing);
+    }
+    if (data->get("bgcolor", o, true)) {
+      // of the entire content view
+      PixelColor p = webColorToPixel(o->stringValue());
+      P44ViewPtr contentView = dispScroller->getScrolledView();
+      if (contentView) contentView->setBackgroundColor(p);
+    }
     if (data->get("offsetx", o, true)) {
+      // of the scroller, additionally offset by installation offset
       double offs = o->doubleValue();
       if (dispScroller) dispScroller->setOffsetX(offs+installationOffsetX);
     }
     if (data->get("offsety", o, true)) {
+      // of the scroller, additionally offset by installation offset
       double offs = o->doubleValue();
       if (dispScroller) dispScroller->setOffsetY(offs+installationOffsetY);
     }
@@ -252,12 +291,24 @@ JsonObjectPtr DispMatrix::status()
   if (answer->isType(json_type_object)) {
     answer->add("unixtime", JsonObject::newInt64((double)MainLoop::unixtime()/Second));
     if (dispScroller) {
-      answer->add("brightness", JsonObject::newDouble((double)dispScroller->getAlpha()/255));
+      answer->add("brightness", JsonObject::newInt32(dispScroller->getAlpha()));
       answer->add("scrolloffsetx", JsonObject::newDouble(dispScroller->getOffsetX()));
       answer->add("scrolloffsety", JsonObject::newDouble(dispScroller->getOffsetY()));
       answer->add("scrollstepx", JsonObject::newDouble(dispScroller->getStepX()));
       answer->add("scrollstepy", JsonObject::newDouble(dispScroller->getStepY()));
       answer->add("scrollsteptime", JsonObject::newDouble((double)dispScroller->getScrollStepInterval()/Second));
+      P44ViewPtr contents = dispScroller->getScrolledView();
+      if (contents) {
+        // scrolled view = contents
+        answer->add("bgcolor", JsonObject::newString(pixelToWebColor(contents->getBackgroundColor())));
+      }
+      TextViewPtr text = boost::dynamic_pointer_cast<TextView>(contents);
+      if (text) {
+        // text view
+        answer->add("color", JsonObject::newString(pixelToWebColor(text->getForegroundColor())));
+        answer->add("text", JsonObject::newString(text->getText()));
+        answer->add("spacing", JsonObject::newInt32(text->getTextSpacing()));
+      }
     }
   }
   return answer;
