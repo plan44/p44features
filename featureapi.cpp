@@ -266,7 +266,8 @@ void FeatureApi::runCmd(JsonObjectPtr aCmds, int aIndex, ScriptContextPtr aConte
     return;
   }
   ApiRequestPtr req = ApiRequestPtr(new InternalRequest(cmd));
-  processRequest(req);
+  ErrorPtr err = processRequest(req);
+  if (!Error::isOK(err)) { LOG(LOG_WARNING, "API script step execution error: %s", Error::text(err)); }
   executeNextCmd(aCmds, aIndex+1, aContext, aFinishedCallback);
 }
 
@@ -447,9 +448,9 @@ ErrorPtr FeatureApi::init(ApiRequestPtr aRequest)
   bool featureFound = false;
   ErrorPtr err;
   JsonObjectPtr reqData = aRequest->getRequest();
-  JsonObjectPtr o = reqData->get("gridcoordinate");
+  JsonObjectPtr o = reqData->get("devicelabel");
   if (o) {
-    gridcoordinate = o->stringValue();
+    devicelabel = o->stringValue();
   }
   for (FeatureMap::iterator f = featureMap.begin(); f!=featureMap.end(); ++f) {
     JsonObjectPtr initData = reqData->get(f->first.c_str());
@@ -488,7 +489,7 @@ ErrorPtr FeatureApi::status(ApiRequestPtr aRequest)
   }
   answer->add("features", features);
   // - grid coordinate
-  answer->add("gridcoordinate", JsonObject::newString(gridcoordinate));
+  answer->add("devicelabel", JsonObject::newString(devicelabel));
   // - MAC address and IPv4
   answer->add("macaddress", JsonObject::newString(macAddressToString(macAddress(), ':')));
   answer->add("ipv4", JsonObject::newString(ipv4ToString(ipv4Address())));

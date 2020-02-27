@@ -143,7 +143,7 @@ namespace p44 {
     typedef std::map<string, FeaturePtr> FeatureMap;
     FeatureMap featureMap;
 
-    string gridcoordinate;
+    string devicelabel;
 
     MLTicket scriptTicket;
 
