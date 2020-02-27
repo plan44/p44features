@@ -37,4 +37,58 @@ List, will expand with each new project:
 - hermel: dual solenoid crocket playing driver
 - rfid: multiple cheap RFID readers as user-detecting "buttons"
 
+
+Feature API
+-----------
+
+### Dispmatrix
+
+#### Initialisation
+
+{ "cmd":"init", "dispmatrix": { "installationX": *overall-x*, "installationY": *overall-y*, "rootview": *p44lrgraphics-view-config* }
+
+- *x,y*: position of this p44featured unit in a longer scroller consisting of multiple p44featured hardware units. This allows sending the same global scrolling offsets to all units, and each unit interprets it according to its position in the overall installation.
+- if no *p44lrgraphics-view-config* is specified, the root view will be set to a scroller labelled "DISPSCROLLER" filling the entire LEDarrangement
+- *p44lrgraphics-view-config* can be the view config JSON object itself or a resource file name. A relative filename will be searched in the /dispmatrix subdirectory of the app's resource directory.
+
+#### Start scrolling
+
+{ "feature":"dispmatrix", "cmd":"startscroll", "stepx":*x-step-size*, "stepy": *y-step-size*, "steps": *num-steps*, "interval": *step-interval-seconds*, "roundoffsets": *bool*, "start": *absolute_unix-time-in-seconds* }
+
+- step sizes can be fractional
+- *num-steps* can be negative for unlimited scrolling
+- *roundoffsets* causes the current scroll offsets to be rounded to integer number before starting scroll
+- *absolute_unix-time-in-seconds* allows strictly synchronized scrolling start over multiple (NTP synchronized!) hardware units. if `null` is passed, scrolling starts at the next 10-second boundary in absolute unix time.
+
+#### Stop scrolling
+
+{ "feature":"dispmatrix", "cmd":"stopscroll" }
+
+#### Fade Alpha
+
+{ "feature":"dispmatrix", "cmd":"fade", "to": *target-alpha*, "t": *fade-time-in-seconds* }
+
+#### (Re)Configure a view
+
+{ "feature":"dispmatrix", "cmd":"configure", "view": *view-label*, "config": *p44lrgraphics-view-config* }
+
+#### Set a "scene"
+
+{ "feature":"dispmatrix", "scene":*p44lrgraphics-view-config* }
+
+- Setting a scene means replacing the "DISPSCROLLER"'s scrolled view by a new view. This special command makes sure changing the scrolled view's works with wraparound scrolling over multiple modules.
+
+#### Set scroll offsets
+
+{ "feature":"dispmatrix", "offsetx":*offset-x* }
+
+{ "feature":"dispmatrix", "offsetx":*offset-y* }
+
+- This sets the content's scroll position, relative to the configured *installationX/Y* offsets
+
+ 
+
+
+
+
 (c) 2013-2020 by Lukas Zeller / [plan44.ch](https://www.plan44.ch/opensource.php)
