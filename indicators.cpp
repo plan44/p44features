@@ -28,6 +28,7 @@ using namespace p44;
 #define FEATURE_NAME "indicators"
 
 #include "viewfactory.hpp"
+#include "lightspotview.hpp"
 
 Indicators::Indicators(LEDChainArrangementPtr aLedChainArrangement) :
   inherited(FEATURE_NAME),
@@ -75,6 +76,7 @@ ErrorPtr Indicators::initialize(JsonObjectPtr aInitData)
       indicatorsView->setFrame(r);
       indicatorsView->setFullFrameContent();
       indicatorsView->setBackgroundColor(black);
+      indicatorsView->setPositioningMode(P44View::noAdjust);
       // the stack is also the root view
       rootView = indicatorsView;
     }
@@ -114,7 +116,7 @@ ErrorPtr Indicators::processRequest(ApiRequestPtr aRequest)
       if (data->get("dy", o)) f.dy = o->int32Value();
       MLMicroSeconds t = 0.5*Second;
       if (data->get("t", o)) t = o->doubleValue()*Second;
-      PixelColor col = { 255, 0, 0 }; // default to red
+      PixelColor col = { 255, 0, 0, 255 }; // default to red
       if (data->get("color", o)) col = webColorToPixel(o->stringValue());
       // effect
       JsonObjectPtr viewCfg;
@@ -145,8 +147,18 @@ ErrorPtr Indicators::processRequest(ApiRequestPtr aRequest)
           //effectView->setFullFrameContent();
           effectView->animatorFor("alpha")->from(0)->repeat(true, 2)->animate(255, t/2);
         }
+        else if (effectName=="spot") {
+          LightSpotViewPtr lsp = LightSpotViewPtr(new LightSpotView);
+          effectView = lsp;
+          effectView->setFrame(f);
+          effectView->setFullFrameContent();
+          lsp->setRelativeContentOrigin(0, 0);
+          lsp->setRelativeExtent(1); // fill the area
+          lsp->setColoringParameters(col, -1, gradient_curve_cos, 0, gradient_none, 0, gradient_none, true);
+          effectView->animatorFor("alpha")->from(0)->repeat(true, 2)->animate(255, t/2);
+        }
       }
-      // not a predefined effect: could be JSON literal config or filename
+      // not a predefined effect: could be JSON literal config or filename  
       if (!viewCfg && !effectView) {
         viewCfg = Application::jsonObjOrResource(o, &err, FEATURE_NAME "/");
         if (Error::notOK(err)) return err;

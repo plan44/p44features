@@ -29,13 +29,14 @@ Features
 
 List, will expand with each new project:
 
+- indicators: areas in a LED strip or matrix used as indicators with different styles
+- rfid: multiple cheap RFID readers as user-detecting "buttons"
 - dispmatrix: time synchronized LED matrix displays for large scrolling text display
 - light: simple PWM light dimmer
 - neuron: sensor triggered "conductance" light effect
 - mixloop: accelerometer triggered ball movement detector and light effect
 - wifitrack: visualizing WiFi SSIDs revealed to the public in probe requests
 - hermel: dual solenoid crocket playing driver
-- rfid: multiple cheap RFID readers as user-detecting "buttons"
 
 
 Feature API
@@ -48,7 +49,7 @@ Feature API
 { "cmd":"init", "dispmatrix": { "installationX": *overall-x*, "installationY": *overall-y*, "rootview": *p44lrgraphics-view-config* }
 
 - *x,y*: position of this p44featured unit in a longer scroller consisting of multiple p44featured hardware units. This allows sending the same global scrolling offsets to all units, and each unit interprets it according to its position in the overall installation.
-- if no *p44lrgraphics-view-config* is specified, the root view will be set to a scroller labelled "DISPSCROLLER" filling the entire LEDarrangement
+- if no *p44lrgraphics-view-config* is specified, the root view will be set to a scroller labelled "DISPSCROLLER" filling the entire LEDarrangement. If a custom view config is passed, it should contain a scroller named "DISPSCROLLER".
 - *p44lrgraphics-view-config* can be the view config JSON object itself or a resource file name. A relative filename will be searched in the /dispmatrix subdirectory of the app's resource directory.
 
 #### Start scrolling
@@ -85,6 +86,23 @@ Feature API
 { "feature":"dispmatrix", "offsetx":*offset-y* }
 
 - This sets the content's scroll position, relative to the configured *installationX/Y* offsets
+
+### Indicators
+
+#### Initialisation
+
+{ "cmd":"init", "indicators": { "rootview": *p44lrgraphics-view-config* }
+
+- if no *p44lrgraphics-view-config* is specified, the root view will be set to a stack labelled "INDICATORS" filling the entire LEDarrangement. If a custom view config is passed, it should contain a stack named "INDICATORS".
+
+#### Show an indicator
+
+{ "feature":"indicators", "cmd":"indicate", "x":*x-start*, "dx":*x-size*, "y":*y-start*, "dy":*y-size*, "effect":"*effect-name-or-viewconfig*", "t":*effect-duration-in-seconds*, "color":"*web-color*" }
+
+- *effect-name-or-viewconfig* can be one of the built-in effects (at this time: "*plain*", "*swipe*", "*pulse*", "*spot*") or configuration of a view (including animations) to be shown at the specified coordinates. The view can be specified as inline JSON or via specifying the resource name of a resource file. A relative filename will be searched in the /indicators subdirectory of the app's resource directory.
+
+
+
 
  
 
