@@ -50,6 +50,8 @@ namespace p44 {
 
   public:
 
+    /// create indicators
+    /// @param aLedChainArrangement the LED chain arrangement containing all indicators
     Indicators(LEDChainArrangementPtr aLedChainArrangement);
     virtual ~Indicators();
 

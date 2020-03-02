@@ -28,24 +28,36 @@
 
 namespace p44 {
 
-  /*
-  class Light : public Feature
+  class RFIDs : public Feature
   {
     typedef Feature inherited;
 
-    AnalogIoPtr pwmDimmer;
-    double currentValue = 0;
-    const MLMicroSeconds dt = 20 * MilliSecond;
-    double to;
-    double dv;
-    MLTicket ticket;
+    typedef std::list<RFID522Ptr> RFIDReaderList;
+
+    SPIDevicePtr spiDevice; ///< the generic SPI device where readers are connected
+    RFID522::SelectCB readerSelectFunc; ///< the function to select a specific reader by index
+    DigitalIoPtr resetOutput; ///< common reset output
+    DigitalIoPtr irqInput; ///< common IRQ input
+    RFIDReaderList rfidReaders; ///< the active RFID readers
+
+    RFIDReaderList::iterator nextReaderToPoll;
+    MLTicket pollTimer; ///< timer for polling RFIDs
+    MLMicroSeconds rfidPollInterval;
+
+
 
   public:
 
-    Light(AnalogIoPtr aPwmDimmer);
+    /// create set of RFID522 readers
+    /// @param aSPIGenericDev a generic SPI device for the bus the readers are connected to
+    /// @param aReaderSelectFunc will be called to select readers by index
+    /// @param aResetOutput output that resets the RFID readers
+    /// @param aIRQInput input connected to the IRQ lines of the RFID readers
+    RFIDs(SPIDevicePtr aSPIGenericDev, RFID522::SelectCB aReaderSelectFunc, DigitalIoPtr aResetOutput, DigitalIoPtr aIRQInput);
+    virtual ~RFIDs();
 
-    void fade(double aFrom, double aTo, MLMicroSeconds aFadeTime, MLMicroSeconds aStartTime);
-    double current();
+    /// reset the feature to uninitialized/re-initializable state
+    virtual void reset() override;
 
     /// initialize the feature
     /// @param aInitData the init data object specifying feature init details
@@ -65,25 +77,11 @@ namespace p44 {
 
     void initOperation();
 
-    // PWM    = PWM value
-    // maxPWM = max PWM value
-    // B      = brightness
-    // maxB   = max brightness value
-    // S      = dim Curve Exponent (1=linear, 2=quadratic, ...)
-    //
-    //                   (B*S/maxB)
-    //                 e            - 1
-    // PWM =  maxPWM * ----------------
-    //                      S
-    //                    e   - 1
-    //
-    double brightnessToPWM(double aBrightness);
-    void update(MLTimer &aTimer);
+    void rfidRead(MLTimer& aTimer);
 
-    ErrorPtr fade(ApiRequestPtr aRequest);
+    void rfidDetected(int aReaderIndex, const string aRFIDnUID);
 
   };
-  */
 
 } // namespace p44
 

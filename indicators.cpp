@@ -59,8 +59,10 @@ ErrorPtr Indicators::initialize(JsonObjectPtr aInitData)
 {
   LOG(LOG_NOTICE, "initializing " FEATURE_NAME);
   reset();
-  JsonObjectPtr o;
+  // { "cmd":"init", "indicators": {}
+  // { "cmd":"init", "indicators": { "rootview": <p44lrgraphics-view-config> }
   ErrorPtr err;
+  JsonObjectPtr o;
   if (ledChainArrangement) {
     // get the ledChainArrangement's current rootview (possibly shared with other feature)
     P44ViewPtr rootView = ledChainArrangement->getRootView();
@@ -148,17 +150,19 @@ ErrorPtr Indicators::processRequest(ApiRequestPtr aRequest)
           effectView->animatorFor("alpha")->from(0)->repeat(true, 2)->animate(255, t/2);
         }
         else if (effectName=="spot") {
+          bool radial = false;
+          if (data->get("radial", o)) radial = o->boolValue();
           LightSpotViewPtr lsp = LightSpotViewPtr(new LightSpotView);
           effectView = lsp;
           effectView->setFrame(f);
           effectView->setFullFrameContent();
           lsp->setRelativeContentOrigin(0, 0);
           lsp->setRelativeExtent(1); // fill the area
-          lsp->setColoringParameters(col, -1, gradient_curve_cos, 0, gradient_none, 0, gradient_none, true);
+          lsp->setColoringParameters(col, -1, gradient_curve_cos, 0, gradient_none, 0, gradient_none, radial);
           effectView->animatorFor("alpha")->from(0)->repeat(true, 2)->animate(255, t/2);
         }
       }
-      // not a predefined effect: could be JSON literal config or filename  
+      // not a predefined effect: could be JSON literal config or filename
       if (!viewCfg && !effectView) {
         viewCfg = Application::jsonObjOrResource(o, &err, FEATURE_NAME "/");
         if (Error::notOK(err)) return err;

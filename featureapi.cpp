@@ -484,7 +484,7 @@ void FeatureApi::start(const string aApiPort)
   apiServer->setConnectionParams(NULL, aApiPort.c_str(), SOCK_STREAM, AF_INET6);
   apiServer->setAllowNonlocalConnections(true);
   apiServer->startServer(boost::bind(&FeatureApi::apiConnectionHandler, this, _1), 10);
-  LOG(LOG_INFO, "FeatureApi listening on %s", aApiPort.c_str());
+  LOG(LOG_INFO, "FeatureApi listening on port %s", aApiPort.c_str());
 }
 
 

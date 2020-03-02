@@ -102,6 +102,20 @@ Feature API
 - *effect-name-or-viewconfig* can be one of the built-in effects (at this time: "*plain*", "*swipe*", "*pulse*", "*spot*") or configuration of a view (including animations) to be shown at the specified coordinates. The view can be specified as inline JSON or via specifying the resource name of a resource file. A relative filename will be searched in the /indicators subdirectory of the app's resource directory.
 
 
+### RFIDs
+
+#### Initialisation
+
+{ "cmd":"init", "rfids": { "readers": [*index*, *index*,...], "pollinterval":*pollinterval_seconds* }
+
+- *index* are the physical bus addresses (0..23 in p44rfidctrl and p44rfidhat hardware) to select the reader. Depending on which readers on which cables are in use, this can be a sequence of numbers with or without gaps.
+
+#### API signalisation
+
+{ "rfid":"*rfid_nUID*", "rfid_index":*rfid_reader_index* }
+
+- *rfid_nUID* is the nUID of the RFID tag seen
+- *rfid_reader_index* is the physical bus address of the reader which has seen the RFID tag
 
 
  
