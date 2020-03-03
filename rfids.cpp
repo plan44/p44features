@@ -110,9 +110,9 @@ JsonObjectPtr RFIDs::status()
 void RFIDs::rfidDetected(int aReaderIndex, const string aRFIDnUID)
 {
   JsonObjectPtr message = JsonObject::newObj();
-  message->add("rfid", JsonObject::newString(aRFIDnUID));
-  message->add("rfid_index", JsonObject::newInt32(aReaderIndex));
-  FeatureApi::sharedApi()->sendMessage(message);
+  message->add("nUID", JsonObject::newString(aRFIDnUID));
+  message->add("reader", JsonObject::newInt32(aReaderIndex));
+  sendEventMessage(message);
 }
 
 

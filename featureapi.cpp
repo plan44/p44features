@@ -488,10 +488,16 @@ void FeatureApi::start(const string aApiPort)
 }
 
 
-ErrorPtr FeatureApi::sendMessage(JsonObjectPtr aMessage)
+void FeatureApi::sendMessage(JsonObjectPtr aMessage)
 {
-  if (!connection) return TextError::err("No API connection exists, cannot send message");
-  return connection->sendMessage(aMessage);
+  if (!connection) {
+    LOG(LOG_WARNING, "no API connection, message cannot be sent: %s", aMessage ? aMessage->json_c_str() : "<none>");
+    return;
+  }
+  ErrorPtr err = connection->sendMessage(aMessage);
+  if (Error::notOK(err)) {
+    LOG(LOG_ERR, "Error sending message to API: %s", err->text());
+  }
 }
 
 

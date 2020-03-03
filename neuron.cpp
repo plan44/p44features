@@ -233,7 +233,7 @@ void Neuron::neuronSpike(double aValue)
 {
   JsonObjectPtr message = JsonObject::newObj();
   message->add("sensor", JsonObject::newDouble(aValue));
-  FeatureApi::sharedApi()->sendMessage(message);
+  sendEventMessage(message);
 }
 
 #endif // ENABLE_FEATURE_NEURON

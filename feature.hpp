@@ -67,6 +67,11 @@ namespace p44 {
 
     void setInitialized() { initialized = true; }
 
+    /// send event message
+    /// @param aEventMessage the API request to process
+    /// @note event messages are messages sent by a feature without a preceeding request
+    void sendEventMessage(JsonObjectPtr aMessage);
+
   };
   typedef boost::intrusive_ptr<Feature> FeaturePtr;
 

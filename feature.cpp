@@ -60,6 +60,14 @@ JsonObjectPtr Feature::status()
 }
 
 
+void Feature::sendEventMessage(JsonObjectPtr aMessage)
+{
+  if (!aMessage) aMessage = JsonObject::newObj();
+  aMessage->add("feature", JsonObject::newString(getName()));
+  FeatureApi::sharedApi()->sendMessage(aMessage);
+}
+
+
 
 void Feature::reset()
 {

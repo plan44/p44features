@@ -112,7 +112,7 @@ Feature API
 
 #### API signalisation
 
-{ "rfid":"*rfid_nUID*", "rfid_index":*rfid_reader_index* }
+{ "feature":"rfids", "nUID":"*rfid_nUID*", "reader":*rfid_reader_index* }
 
 - *rfid_nUID* is the nUID of the RFID tag seen
 - *rfid_reader_index* is the physical bus address of the reader which has seen the RFID tag

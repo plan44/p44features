@@ -1197,8 +1197,8 @@ void WifiTrack::displayEncounter(string aIntro, int aImageIndex, PixelColor aCol
     personinfo->add("BRAND", JsonObject::newString(aBrand));
     personinfo->add("HASTARGET", JsonObject::newString(aTarget.size()>0 ? "1" : "0"));
     personinfo->add("TARGET", JsonObject::newString(aTarget));
-    message->add("wifitrackshow", personinfo);
-    FeatureApi::sharedApi()->sendMessage(message);
+    message->add("personinfo", personinfo);
+    sendEventMessage(message);
   }
 }
 

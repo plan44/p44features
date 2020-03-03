@@ -199,8 +199,7 @@ namespace p44 {
     void start(const string aApiPort);
 
     /// send (event) message to API
-    /// @return Ok if message could be sent, error if not (e.g. because no connection)
-    ErrorPtr sendMessage(JsonObjectPtr aMessage);
+    void sendMessage(JsonObjectPtr aMessage);
 
   private:
 
