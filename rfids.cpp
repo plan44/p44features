@@ -17,6 +17,13 @@
 //  along with pixelboardd. If not, see <http://www.gnu.org/licenses/>.
 //
 
+// File scope debugging options
+// - Set ALWAYS_DEBUG to 1 to enable DBGLOG output even in non-DEBUG builds of this file
+#define ALWAYS_DEBUG 0
+// - set FOCUSLOGLEVEL to non-zero log level (usually, 5,6, or 7==LOG_DEBUG) to get focus (extensive logging) for this file
+//   Note: must be before including "logger.hpp" (or anything that includes "logger.hpp")
+#define FOCUSLOGLEVEL 6
+
 #include "rfids.hpp"
 
 #if ENABLE_FEATURE_RFIDS
@@ -27,7 +34,7 @@ using namespace p44;
 
 #define FEATURE_NAME "rfids"
 
-#define RFID_DEFAULT_READ_INTERVAL (100*MilliSecond)
+#define RFID_DEFAULT_POLL_INTERVAL (100*MilliSecond)
 
 
 RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, RFID522::SelectCB aReaderSelectFunc, DigitalIoPtr aResetOutput, DigitalIoPtr aIRQInput) :
@@ -36,7 +43,7 @@ RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, RFID522::SelectCB aReaderSelectFunc, D
   readerSelectFunc(aReaderSelectFunc),
   resetOutput(aResetOutput),
   irqInput(aIRQInput),
-  rfidPollInterval(RFID_DEFAULT_READ_INTERVAL)
+  rfidPollInterval(RFID_DEFAULT_POLL_INTERVAL)
 {
 
 }
@@ -118,51 +125,127 @@ void RFIDs::rfidDetected(int aReaderIndex, const string aRFIDnUID)
 
 // MARK: ==== rfids operation
 
+#define POLLING_IRQ 1
+
+#define RESET_TIME (1*Second)
+
+void RFIDs::resetReaders(SimpleCB aDoneCB)
+{
+  resetOutput->set(0); // assert reset = LOW
+  rfidTimer.executeOnce(boost::bind(&RFIDs::releaseReset, this, aDoneCB), RESET_TIME);
+}
+
+
+void RFIDs::releaseReset(SimpleCB aDoneCB)
+{
+  resetOutput->set(1); // release reset = HIGH
+  rfidTimer.executeOnce(boost::bind(&RFIDs::resetDone, this, aDoneCB), RESET_TIME);
+}
+
+
+void RFIDs::resetDone(SimpleCB aDoneCB)
+{
+  if (aDoneCB) aDoneCB();
+}
+
+
 void RFIDs::initOperation()
 {
   LOG(LOG_NOTICE, "- Resetting all readers");
-  resetOutput->set(0); // release reset, active high
-  MainLoop::sleep(1*Second);
-  LOG(LOG_NOTICE, "- Releasing reset for all readers");
-  resetOutput->set(1); // release reset, active high
-  MainLoop::sleep(1*Second);
+  resetReaders(boost::bind(&RFIDs::initReaders, this));
+}
+
+
+void RFIDs::initReaders()
+{
   for (RFIDReaderList::iterator pos = rfidReaders.begin(); pos!=rfidReaders.end(); ++pos) {
     RFID522Ptr reader = *pos;
     LOG(LOG_NOTICE, "- Enabling RFID522 reader address #%d", reader->getReaderIndex());
     reader->init();
-    MainLoop::sleep(1*Second);
   }
-  MainLoop::sleep(2*Second);
-  // seems to work only on second round....
+  // install IRQ
+  if (!POLLING_IRQ && irqInput)
+  {
+    if (!irqInput->setInputChangedHandler(boost::bind(&RFIDs::irqHandler, this, _1), 0, Never)) {
+      LOG(LOG_ERR, "IRQ pin must have edge detection!");
+    }
+  }
+  else {
+    // just poll IRQ
+    rfidTimer.executeOnce(boost::bind(&RFIDs::pollIrq, this, _1), rfidPollInterval);
+  }
+  // start scanning for cards on all readers
   for (RFIDReaderList::iterator pos = rfidReaders.begin(); pos!=rfidReaders.end(); ++pos) {
     RFID522Ptr reader = *pos;
-    LOG(LOG_NOTICE, "- Enabling RFID522 reader address #%d AGAIN", reader->getReaderIndex());
-    reader->init();
-    MainLoop::sleep(1*Second);
+    FOCUSLOG("Start probing on reader %d", reader->getReaderIndex());
+    reader->probeTypeA(boost::bind(&RFIDs::detectedCard, this, reader, _1), true);
   }
-  nextReaderToPoll = rfidReaders.begin();
-  pollTimer.executeOnce(boost::bind(&RFIDs::rfidRead, this, _1), 500*MilliSecond);
 }
 
 
-void RFIDs::rfidRead(MLTimer& aTimer)
+void RFIDs::pollIrq(MLTimer &aTimer)
 {
-  if (nextReaderToPoll==rfidReaders.end()) nextReaderToPoll = rfidReaders.begin();
-  if (nextReaderToPoll!=rfidReaders.end()) {
-    RFID522Ptr reader = *nextReaderToPoll;
-    nextReaderToPoll++;
-    if (reader->isCard()) {
-      /* If so then get its serial number */
-      reader->readCardSerial();
-      string id = string_format("%02X%02X%02X%02X", reader->serNum[3], reader->serNum[2], reader->serNum[1], reader->serNum[0]);
-      LOG(LOG_NOTICE, "Reader #%d: Card ID %s detected", reader->getReaderIndex(), id.c_str());
-      rfidDetected(reader->getReaderIndex(), id);
-    }
-    else {
-      LOG(LOG_INFO, "Reader #%d: No card detected", reader->getReaderIndex());
+  irqHandler(false); // assume active (LOW)
+  MainLoop::currentMainLoop().retriggerTimer(aTimer, rfidPollInterval);
+}
+
+
+void RFIDs::irqHandler(bool aState)
+{
+  rfidTimer.cancel();
+  if (aState) {
+    // going high (inactive)
+    FOCUSLOG("--- RFIDs IRQ went inactive");
+  }
+  else {
+    // going low (active)
+    FOCUSLOG("+++ RFIDs IRQ went ACTIVE -> calling irq handlers");
+    RFIDReaderList::iterator pos = rfidReaders.begin();
+    bool pending = false;
+    while (pos!=rfidReaders.end()) {
+      // let reader check IRQ
+      if ((*pos)->irqHandler()) {
+        pending = true;
+      }
+      #if !POLLING_IRQ
+      if (irqInput && irqInput->isSet()==true) {
+        // served!
+        FOCUSLOG("IRQ served, irqline is HIGH now");
+        break;
+      }
+      #endif
+      // next
+      pos++;
     }
   }
-  MainLoop::currentMainLoop().retriggerTimer(aTimer, rfidPollInterval);
+}
+
+
+void RFIDs::detectedCard(RFID522Ptr aReader, ErrorPtr aErr)
+{
+  if (Error::isOK(aErr)) {
+    LOG(LOG_NOTICE, "Detected card on reader %d", aReader->getReaderIndex());
+    aReader->antiCollision(boost::bind(&RFIDs::gotCardNUID, this, aReader, _1, _3));
+  }
+  else {
+    LOG(LOG_INFO, "Error on reader %d, status='%s' -> restart probing again", aReader->getReaderIndex(), aErr->text());
+    aReader->probeTypeA(boost::bind(&RFIDs::detectedCard, this, aReader, _1), true);
+  }
+}
+
+
+void RFIDs::gotCardNUID(RFID522Ptr aReader, ErrorPtr aErr, const string aNUID)
+{
+  if (Error::isOK(aErr)) {
+    string id = binaryToHexString(aNUID.substr(0,4));
+    LOG(LOG_NOTICE, "Reader #%d: Card ID %s detected", aReader->getReaderIndex(), id.c_str());
+    rfidDetected(aReader->getReaderIndex(), id);
+  }
+  else {
+    LOG(LOG_NOTICE, "Reader #%d: Card ID reading error: %s", aReader->getReaderIndex(), aErr->text());
+  }
+  // continue probing
+  aReader->probeTypeA(boost::bind(&RFIDs::detectedCard, this, aReader, _1), true);
 }
 
 

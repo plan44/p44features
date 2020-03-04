@@ -40,10 +40,11 @@ namespace p44 {
     DigitalIoPtr irqInput; ///< common IRQ input
     RFIDReaderList rfidReaders; ///< the active RFID readers
 
-    RFIDReaderList::iterator nextReaderToPoll;
-    MLTicket pollTimer; ///< timer for polling RFIDs
+//    RFIDReaderList::iterator nextReaderToPoll;
+//    MLTicket pollTimer; ///< timer for polling RFIDs
     MLMicroSeconds rfidPollInterval;
 
+    MLTicket rfidTimer; ///< timer for polling and other timing
 
 
   public:
@@ -75,7 +76,17 @@ namespace p44 {
 
   private:
 
+    void resetReaders(SimpleCB aDoneCB);
+    void releaseReset(SimpleCB aDoneCB);
+    void resetDone(SimpleCB aDoneCB);
+
     void initOperation();
+    void initReaders();
+
+    void irqHandler(bool aState);
+    void pollIrq(MLTimer &aTimer);
+    void detectedCard(RFID522Ptr aReader, ErrorPtr aErr);
+    void gotCardNUID(RFID522Ptr aReader, ErrorPtr aErr, const string aNUID);
 
     void rfidRead(MLTimer& aTimer);
 
