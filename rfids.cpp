@@ -237,7 +237,11 @@ void RFIDs::detectedCard(RFID522Ptr aReader, ErrorPtr aErr)
 void RFIDs::gotCardNUID(RFID522Ptr aReader, ErrorPtr aErr, const string aNUID)
 {
   if (Error::isOK(aErr)) {
-    string id = binaryToHexString(aNUID.substr(0,4));
+    string id;
+    // nUID is LSB first, and last byte is redundant BCC. Reverse to have MSB first, and omit BCC
+    for (int i=(int)aNUID.size()-2; i>=0; i--) {
+      string_format_append(id, "%02X", (uint8_t)aNUID[i]);
+    }
     LOG(LOG_NOTICE, "Reader #%d: Card ID %s detected", aReader->getReaderIndex(), id.c_str());
     rfidDetected(aReader->getReaderIndex(), id);
   }
