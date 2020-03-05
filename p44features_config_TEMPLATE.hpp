@@ -36,6 +36,7 @@
 #define ENABLE_FEATURE_DISPMATRIX 0
 #define ENABLE_FEATURE_RFIDS 0
 #define ENABLE_FEATURE_INDICATORS 0
+#define ENABLE_FEATURE_INPUTS 0
 // - specific application
 #define ENABLE_FEATURE_WIFITRACK 0
 // - very specific hardware related stuff

@@ -110,16 +110,32 @@ Feature API
 
 - *index* are the physical bus addresses (0..23 in p44rfidctrl and p44rfidhat hardware) to select the reader. Depending on which readers on which cables are in use, this can be a sequence of numbers with or without gaps.
 
-#### API signalisation
+#### API events
 
-{ "feature":"rfids", "nUID":"*rfid_nUID*", "reader":*rfid_reader_index* }
+{ "feature":"rfids", "nUID":"*rfid_nUID*", "reader":*rfid\_reader\_index* }
 
 - *rfid_nUID* is the nUID of the RFID tag seen
-- *rfid_reader_index* is the physical bus address of the reader which has seen the RFID tag
+- *rfid\_reader\_index* is the physical bus address of the reader which has seen the RFID tag
 
 
- 
+### Generic Inputs
 
+#### Initialisation
+
+{ "cmd":"init", "inputs": { "*input_name*":{ "pin":"*pin_spec*", "initially":*initial_bool*, "debouncing":*debounce\_in\_seconds*, "pollinterval":*pollinterval\_in\_seconds* } , ... } }
+
+- *input_name* is a name which is included in the API events to identify the input.
+- *pin_spec* is a p44utils DigitalIo pin specification
+- optional *initial_bool* is the initial value the input is assumed to have (to force/prevent event at init)
+- optional *debounce\_in\_seconds* sets debouncing time (default = 80mS)
+- optional *pollinterval\_in\_seconds* sets polling interval (default = 250mS). This is only for inputs which do not have system level edge detection.
+
+#### API events
+
+{ "feature":"inputs", "*input_name*":*input_value* }
+
+- *input_name* is a name of the input.
+- *input_value* is the current value of the input
 
 
 
