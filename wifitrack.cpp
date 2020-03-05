@@ -1166,6 +1166,8 @@ void WifiTrack::displayEncounter(string aIntro, int aImageIndex, PixelColor aCol
         LOG(LOG_WARNING, "Scrolling de-synchronized (actual content out of view) -> reset scrolling");
         disp->resetScroll();
       }
+      #if ENABLE_LEGACY_FEATURE_SCRIPTS
+      // use eventscript instead to handle wifiscroll events
       FeatureApi::SubstitutionMap subst;
       subst["HASINTRO"] = aIntro.size()>0 ? "1" : "0";
       subst["INTRO"] = aIntro;
@@ -1179,6 +1181,7 @@ void WifiTrack::displayEncounter(string aIntro, int aImageIndex, PixelColor aCol
       subst["TARGET"] = aTarget;
       loadingContent = false; // because calling script will terminate previous script without callback, make sure loading is not kept in progress (would never get out)
       FeatureApi::sharedApi()->runJsonFile("scripts/showssid.json", NULL, &scriptContext, &subst);
+      #endif // ENABLE_LEGACY_FEATURE_SCRIPTS
     }
     else {
       LOG(LOG_WARNING, "Cannot push to scroll text (scroll delay would be > %.1f Seconds)", (double)maxDisplayDelay/Second);
@@ -1208,11 +1211,17 @@ bool WifiTrack::needContentHandler()
   if (!loadingContent) {
     loadingContent = true;
     FOCUSLOG("Display needs content - calling wifipause script");
+    #if ENABLE_LEGACY_FEATURE_SCRIPTS
     ErrorPtr err = FeatureApi::sharedApi()->runJsonFile("scripts/wifipause.json", boost::bind(&WifiTrack::contentLoaded, this), &scriptContext, NULL);
     if (!Error::isOK(err)) {
       loadingContent = false;
       LOG(LOG_WARNING, "wifipause script could not be run: %s", Error::text(err));
     }
+    #endif
+    // report
+    JsonObjectPtr message = JsonObject::newObj();
+    message->add("event", JsonObject::newString("needcontent"));
+    sendEventMessage(message);
   }
   return true; // anyway, keep scrolling
 }

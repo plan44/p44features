@@ -22,6 +22,8 @@
 #include "featureapi.hpp"
 
 #include "feature.hpp"
+
+#include "extutils.hpp"
 #include "macaddress.hpp"
 #include "application.hpp"
 
@@ -119,20 +121,21 @@ FeatureApi::~FeatureApi()
 }
 
 
+// MARK: ==== legacy JSON scripting
+
+#if ENABLE_LEGACY_FEATURE_SCRIPTS
+
 ErrorPtr FeatureApi::runJsonFile(const string aScriptPath, SimpleCB aFinishedCallback, FeatureJsonScriptContextPtr* aContextP, SubstitutionMap* aSubstitutionsP)
 {
   ErrorPtr err;
   string jsonText;
   string fpath = Application::sharedApplication()->resourcePath(aScriptPath).c_str();
-  FILE* f = fopen(fpath.c_str(), "r");
-  if (f==NULL) {
-    err = SysError::errNo();
-    err->prefixMessage("cannot open JSON script file '%s': ", fpath.c_str());
+  err = string_fromfile(fpath, jsonText);
+  if (Error::notOK(err)) {
+    err->prefixMessage("cannot open JSON file '%s': ", fpath.c_str());
     LOG(LOG_WARNING, "Script loading error: %s", Error::text(err));
   }
   else {
-    string_fgetfile(f, jsonText);
-    fclose(f);
     err = runJsonString(jsonText, aFinishedCallback, aContextP, aSubstitutionsP);
   }
   return err;
@@ -240,6 +243,51 @@ void FeatureApi::runCmd(JsonObjectPtr aCmds, int aIndex, FeatureJsonScriptContex
 }
 
 
+ErrorPtr FeatureApi::call(ApiRequestPtr aRequest)
+{
+  JsonObjectPtr reqData = aRequest->getRequest();
+  JsonObjectPtr o;
+  // check for subsititutions
+  FeatureApi::SubstitutionMap subst;
+  o = reqData->get("substitutions");
+  if (o) {
+    string var;
+    JsonObjectPtr val;
+    o->resetKeyIteration();
+    while (o->nextKeyValue(var, val)) {
+      subst[var] = val->stringValue();
+    }
+  }
+  o = reqData->get("script");
+  if (o) {
+    string scriptName = o->stringValue();
+    ErrorPtr err = runJsonFile(scriptName, NULL, NULL, &subst);
+    if (Error::isOK(err)) return Error::ok();
+    return err;
+  }
+  o = reqData->get("scripttext");
+  if (o) {
+    string scriptText = o->stringValue();
+    ErrorPtr err = runJsonString(scriptText, NULL, NULL, &subst);
+    if (Error::isOK(err)) return Error::ok();
+    return err;
+  }
+  o = reqData->get("json");
+  if (o) {
+    ErrorPtr err = executeJson(o, NULL, NULL);
+    if (Error::isOK(err)) return Error::ok();
+    return err;
+  }
+  return FeatureApiError::err("missing 'script', 'scripttext' or 'json' attribute");
+}
+
+
+#endif // ENABLE_LEGACY_FEATURE_SCRIPTS
+
+
+// MARK: ==== feature API
+
+
 FeaturePtr FeatureApi::getFeature(const string aFeatureName)
 {
   FeatureMap::iterator pos = featureMap.find(aFeatureName);
@@ -341,9 +389,11 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
       // no operation (e.g. script steps that only wait)
       return Error::ok();
     }
+    #if ENABLE_LEGACY_FEATURE_SCRIPTS
     if (cmd=="call") {
       return call(aRequest);
     }
+    #endif
     if (cmd=="init") {
       return init(aRequest);
     }
@@ -363,45 +413,6 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
       return FeatureApiError::err("unknown global command '%s'", cmd.c_str());
     }
   }
-}
-
-
-ErrorPtr FeatureApi::call(ApiRequestPtr aRequest)
-{
-  JsonObjectPtr reqData = aRequest->getRequest();
-  JsonObjectPtr o;
-  // check for subsititutions
-  FeatureApi::SubstitutionMap subst;
-  o = reqData->get("substitutions");
-  if (o) {
-    string var;
-    JsonObjectPtr val;
-    o->resetKeyIteration();
-    while (o->nextKeyValue(var, val)) {
-      subst[var] = val->stringValue();
-    }
-  }
-  o = reqData->get("script");
-  if (o) {
-    string scriptName = o->stringValue();
-    ErrorPtr err = runJsonFile(scriptName, NULL, NULL, &subst);
-    if (Error::isOK(err)) return Error::ok();
-    return err;
-  }
-  o = reqData->get("scripttext");
-  if (o) {
-    string scriptText = o->stringValue();
-    ErrorPtr err = runJsonString(scriptText, NULL, NULL, &subst);
-    if (Error::isOK(err)) return Error::ok();
-    return err;
-  }
-  o = reqData->get("json");
-  if (o) {
-    ErrorPtr err = executeJson(o, NULL, NULL);
-    if (Error::isOK(err)) return Error::ok();
-    return err;
-  }
-  return FeatureApiError::err("missing 'script', 'scripttext' or 'json' attribute");
 }
 
 

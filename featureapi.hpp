@@ -205,6 +205,12 @@ namespace p44 {
     ///   api requests from other sources (such as Web API)
     void handleRequest(ApiRequestPtr aRequest);
 
+
+    #if ENABLE_LEGACY_FEATURE_SCRIPTS
+
+    /// Json-"Scripts"
+    /// @{
+
     /// execute JSON request(s) - can be called internally, no answer
     /// @param aJsonCmds a single JSON command request or a array with multiple requests
     /// @param aFinishedCallback called when all commands are done
@@ -212,7 +218,6 @@ namespace p44 {
     ErrorPtr executeJson(JsonObjectPtr aJsonCmds, SimpleCB aFinishedCallback = NULL, FeatureJsonScriptContextPtr* aContextP = NULL);
 
     typedef map<string, string> SubstitutionMap;
-
 
     void substituteVars(string &aString, SubstitutionMap *aSubstitutionsP, ErrorPtr &err);
 
@@ -228,6 +233,9 @@ namespace p44 {
     /// @param aFinishedCallback called when all commands are done
     /// @return ok or error
     ErrorPtr runJsonFile(const string aScriptPath, SimpleCB aFinishedCallback = NULL, FeatureJsonScriptContextPtr* aContextP = NULL, SubstitutionMap* aSubstitutionsP = NULL);
+
+    #endif // ENABLE_LEGACY_FEATURE_SCRIPTS
+
 
 
     /// get feature by name
@@ -263,6 +271,10 @@ namespace p44 {
     void apiRequestHandler(JsonCommPtr aConnection, ErrorPtr aError, JsonObjectPtr aRequest);
     ErrorPtr processRequest(ApiRequestPtr aRequest);
 
+    /// send response via main API connection.
+    /// @note: only for FeatureApiRequest
+    void sendResponse(JsonObjectPtr aResponse);
+
 
     ErrorPtr init(ApiRequestPtr aRequest);
     ErrorPtr reset(ApiRequestPtr aRequest);
@@ -270,14 +282,16 @@ namespace p44 {
     ErrorPtr status(ApiRequestPtr aRequest);
     ErrorPtr ping(ApiRequestPtr aRequest);
     ErrorPtr features(ApiRequestPtr aRequest);
-    ErrorPtr call(ApiRequestPtr aRequest);
 
-    /// send response via main API connection.
-    /// @note: only for FeatureApiRequest
-    void sendResponse(JsonObjectPtr aResponse);
+
+    #if ENABLE_LEGACY_FEATURE_SCRIPTS
+
+    ErrorPtr call(ApiRequestPtr aRequest);
 
     void executeNextCmd(JsonObjectPtr aCmds, int aIndex, FeatureJsonScriptContextPtr aContext, SimpleCB aFinishedCallback);
     void runCmd(JsonObjectPtr aCmds, int aIndex, FeatureJsonScriptContextPtr aContext, SimpleCB aFinishedCallback);
+
+    #endif // ENABLE_LEGACY_FEATURE_SCRIPTS
 
   };
 
