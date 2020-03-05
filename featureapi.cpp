@@ -119,7 +119,7 @@ FeatureApi::~FeatureApi()
 }
 
 
-ErrorPtr FeatureApi::runJsonFile(const string aScriptPath, SimpleCB aFinishedCallback, ScriptContextPtr* aContextP, SubstitutionMap* aSubstitutionsP)
+ErrorPtr FeatureApi::runJsonFile(const string aScriptPath, SimpleCB aFinishedCallback, FeatureJsonScriptContextPtr* aContextP, SubstitutionMap* aSubstitutionsP)
 {
   ErrorPtr err;
   string jsonText;
@@ -166,7 +166,7 @@ void FeatureApi::substituteVars(string &aString, SubstitutionMap *aSubstitutions
 }
 
 
-ErrorPtr FeatureApi::runJsonString(string aJsonString, SimpleCB aFinishedCallback, ScriptContextPtr* aContextP, SubstitutionMap* aSubstitutionsP)
+ErrorPtr FeatureApi::runJsonString(string aJsonString, SimpleCB aFinishedCallback, FeatureJsonScriptContextPtr* aContextP, SubstitutionMap* aSubstitutionsP)
 {
   ErrorPtr err;
   substituteVars(aJsonString, aSubstitutionsP, err);
@@ -181,7 +181,7 @@ ErrorPtr FeatureApi::runJsonString(string aJsonString, SimpleCB aFinishedCallbac
 }
 
 
-ErrorPtr FeatureApi::executeJson(JsonObjectPtr aJsonCmds, SimpleCB aFinishedCallback, ScriptContextPtr* aContextP)
+ErrorPtr FeatureApi::executeJson(JsonObjectPtr aJsonCmds, SimpleCB aFinishedCallback, FeatureJsonScriptContextPtr* aContextP)
 {
   JsonObjectPtr cmds;
   if (!aJsonCmds->isType(json_type_array)) {
@@ -191,12 +191,12 @@ ErrorPtr FeatureApi::executeJson(JsonObjectPtr aJsonCmds, SimpleCB aFinishedCall
   else {
     cmds = aJsonCmds;
   }
-  ScriptContextPtr context;
+  FeatureJsonScriptContextPtr context;
   if (aContextP && *aContextP) {
     context = *aContextP;
   }
   else {
-    context = ScriptContextPtr(new ScriptContext);
+    context = FeatureJsonScriptContextPtr(new FeatureJsonScriptContext);
     if (aContextP) *aContextP = context;
   }
   context->kill();
@@ -205,7 +205,7 @@ ErrorPtr FeatureApi::executeJson(JsonObjectPtr aJsonCmds, SimpleCB aFinishedCall
 }
 
 
-void FeatureApi::executeNextCmd(JsonObjectPtr aCmds, int aIndex, ScriptContextPtr aContext, SimpleCB aFinishedCallback)
+void FeatureApi::executeNextCmd(JsonObjectPtr aCmds, int aIndex, FeatureJsonScriptContextPtr aContext, SimpleCB aFinishedCallback)
 {
   if (!aCmds || aIndex>=aCmds->arrayLength()) {
     // done
@@ -225,7 +225,7 @@ void FeatureApi::executeNextCmd(JsonObjectPtr aCmds, int aIndex, ScriptContextPt
 }
 
 
-void FeatureApi::runCmd(JsonObjectPtr aCmds, int aIndex, ScriptContextPtr aContext, SimpleCB aFinishedCallback)
+void FeatureApi::runCmd(JsonObjectPtr aCmds, int aIndex, FeatureJsonScriptContextPtr aContext, SimpleCB aFinishedCallback)
 {
   JsonObjectPtr cmd = aCmds->arrayGet(aIndex);
   JsonObjectPtr o = cmd->get("callscript");
@@ -321,6 +321,18 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
   }
   else {
     // must be global command
+    #if EXPRESSION_SCRIPT_SUPPORT
+    if (reqData->get("eventscript", o, true)) {
+      // set a script handling internally generated events
+      eventScript = o->stringValue();
+      return Error::ok();
+    }
+    if (reqData->get("run", o, true)) {
+      // directly run a script
+      queueScript(o->stringValue());
+      return Error::ok();
+    }
+    #endif // EXPRESSION_SCRIPT_SUPPORT
     if (!reqData->get("cmd", o, true)) {
       return FeatureApiError::err("missing 'feature' or 'cmd' attribute");
     }
@@ -490,6 +502,12 @@ void FeatureApi::start(const string aApiPort)
 
 void FeatureApi::sendMessage(JsonObjectPtr aMessage)
 {
+  #if EXPRESSION_SCRIPT_SUPPORT
+  if (!eventScript.empty()) {
+    // call event script
+    queueScript(eventScript, aMessage);
+  }
+  #endif // EXPRESSION_SCRIPT_SUPPORT
   if (!connection) {
     LOG(LOG_WARNING, "no API connection, message cannot be sent: %s", aMessage ? aMessage->json_c_str() : "<none>");
     return;
@@ -510,3 +528,110 @@ ErrorPtr FeatureApiError::err(const char *aFmt, ...)
   va_end(args);
   return ErrorPtr(errP);
 }
+
+
+// MARK: - script support
+
+#if EXPRESSION_SCRIPT_SUPPORT
+
+bool FeatureApi::evaluateAsyncFeatureFunctions(EvaluationContext* aEvalContext, const string &aFunc, const FunctionArguments &aArgs, bool &aNotYielded)
+{
+  if (aFunc=="call") {
+    // call(feature_api_json [, concurrent])
+    if (aArgs.size()<1 || aArgs.size()>2) return false; // not enough params
+    if (aArgs[0].notValue()) return aEvalContext->errorInArg(aArgs[0], true);
+    bool concurrent = aArgs[1].boolValue();
+    ExpressionValue res;
+    JsonObjectPtr call;
+    ErrorPtr err;
+    #if EXPRESSION_JSON_SUPPORT
+    call = aArgs[0].jsonValue(&err);
+    #else
+    call = JsonObject::objFromText(aArgs[0].stringValue().c_str(), -1, &err, false);
+    #endif
+    if (Error::notOK(err)) return aEvalContext->throwError(err);
+    // concurrent or blocking requests are possible
+    ApiRequestPtr request;
+    if (concurrent) {
+      request = ApiRequestPtr(new APICallbackRequest(call, NULL));
+      aEvalContext->continueWithAsyncFunctionResult(res);
+      return true;
+    }
+    else {
+      request = ApiRequestPtr(new APICallbackRequest(call, boost::bind(&FeatureApi::apiCallFunctionDone, aEvalContext, _1, _2)));
+    }
+    FeatureApi::sharedApi()->handleRequest(request);
+    aNotYielded = false; // callback will get result
+    return true;
+  }
+  return false;
+}
+
+
+void FeatureApi::apiCallFunctionDone(EvaluationContext* aEvalContext, JsonObjectPtr aResult, ErrorPtr aError)
+{
+  LOG(aEvalContext->getEvalLogLevel(), "feature api call returns '%s', error = %s", aResult->c_strValue(), Error::text(aError));
+  ExpressionValue res;
+  if (Error::isOK(aError)) {
+    res.setJson(aResult);
+  }
+  else {
+    res.setError(aError);
+  }
+  aEvalContext->continueWithAsyncFunctionResult(res);
+}
+
+
+void FeatureApi::queueScript(const string &aScriptCode, JsonObjectPtr aMessage)
+{
+  FeatureApiScriptContextPtr script = FeatureApiScriptContextPtr(new FeatureApiScriptContext(aMessage));
+  script->setCode(aScriptCode);
+  scriptRequests.push_back(script);
+  if (scriptRequests.size()==1) {
+    // there was no script pending, must start
+    runNextScript();
+  }
+}
+
+void FeatureApi::runNextScript()
+{
+  if (!scriptRequests.empty()) {
+    FeatureApiScriptContextPtr script = scriptRequests.front();
+    LOG(LOG_INFO, "+++ Starting feature API script");
+    script->execute(true, boost::bind(&FeatureApi::scriptDone, this, script));
+  }
+}
+
+
+void FeatureApi::scriptDone(FeatureApiScriptContextPtr aScript)
+{
+  LOG(LOG_INFO, "--- Finished feature API script");
+  scriptRequests.pop_front();
+  runNextScript();
+}
+
+
+
+// MARK: - FeatureApiScriptContext
+
+
+bool FeatureApiScriptContext::evaluateAsyncFunction(const string &aFunc, const FunctionArguments &aArgs, bool &aNotYielded)
+{
+  if (FeatureApi::evaluateAsyncFeatureFunctions(this, aFunc, aArgs, aNotYielded)) return true;
+  return inherited::evaluateAsyncFunction(aFunc, aArgs, aNotYielded);
+}
+
+
+bool FeatureApiScriptContext::evaluateFunction(const string &aFunc, const FunctionArguments &aArgs, ExpressionValue &aResult)
+{
+  if (aFunc=="message" && aArgs.size()==0) {
+    aResult.setJson(apiMessage);
+  }
+  else {
+    return inherited::evaluateFunction(aFunc, aArgs, aResult);
+  }
+  return true;
+}
+
+
+#endif // EXPRESSION_SCRIPT_SUPPORT

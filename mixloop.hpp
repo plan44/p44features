@@ -51,7 +51,7 @@ namespace p44 {
     bool hitShowing;
     MLTicket showTicket;
     MLTicket dispTicket;
-    ScriptContextPtr scriptContext;
+    FeatureJsonScriptContextPtr scriptContext;
 
     // parameters
     // - measurement

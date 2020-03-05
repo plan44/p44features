@@ -127,7 +127,7 @@ namespace p44 {
     FdCommPtr dumpStream;
 
     MLTicket restartTicket;
-    ScriptContextPtr scriptContext;
+    FeatureJsonScriptContextPtr scriptContext;
 
     WTMacMap macs;
     WTSSidMap ssids;

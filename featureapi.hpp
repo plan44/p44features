@@ -26,6 +26,12 @@
 
 #include "jsoncomm.hpp"
 
+#if ENABLE_EXPRESSIONS
+  #include "expressions.hpp"
+#endif
+
+
+
 namespace p44 {
 
   typedef boost::function<void (JsonObjectPtr aResponse, ErrorPtr aError)> RequestDoneCB;
@@ -119,7 +125,7 @@ namespace p44 {
 
 
 //#error get rid of that, use real script instead
-  class ScriptContext : public P44Obj
+  class FeatureJsonScriptContext : public P44Obj
   {
     friend class FeatureApi;
 
@@ -129,7 +135,33 @@ namespace p44 {
     void kill() { scriptTicket.cancel(); }
 
   };
-  typedef boost::intrusive_ptr<ScriptContext> ScriptContextPtr;
+  typedef boost::intrusive_ptr<FeatureJsonScriptContext> FeatureJsonScriptContextPtr;
+
+
+  #if EXPRESSION_SCRIPT_SUPPORT
+
+  class FeatureApiScriptContext : public ScriptExecutionContext
+  {
+    typedef ScriptExecutionContext inherited;
+    friend class FeatureApi;
+
+    JsonObjectPtr apiMessage;
+
+  public:
+
+    FeatureApiScriptContext(JsonObjectPtr aMessage) : apiMessage(aMessage) {};
+
+    /// evaluation of synchronously implemented functions which immediately return a result
+    virtual bool evaluateFunction(const string &aFunc, const FunctionArguments &aArgs, ExpressionValue &aResult) override;
+
+    /// evaluation of asynchronously implemented functions which may yield execution and resume later
+    virtual bool evaluateAsyncFunction(const string &aFunc, const FunctionArguments &aArgs, bool &aNotYielded) override;
+
+  };
+  typedef boost::intrusive_ptr<FeatureApiScriptContext> FeatureApiScriptContextPtr;
+
+  #endif // EXPRESSION_SCRIPT_SUPPORT
+
 
 
 
@@ -146,6 +178,14 @@ namespace p44 {
     string devicelabel;
 
     MLTicket scriptTicket;
+
+    #if EXPRESSION_SCRIPT_SUPPORT
+    string eventScript;
+
+    typedef std::list<FeatureApiScriptContextPtr> FeatureApiScriptContextsList;
+    FeatureApiScriptContextsList scriptRequests;
+
+    #endif
 
   public:
 
@@ -169,7 +209,7 @@ namespace p44 {
     /// @param aJsonCmds a single JSON command request or a array with multiple requests
     /// @param aFinishedCallback called when all commands are done
     /// @return ok or error
-    ErrorPtr executeJson(JsonObjectPtr aJsonCmds, SimpleCB aFinishedCallback = NULL, ScriptContextPtr* aContextP = NULL);
+    ErrorPtr executeJson(JsonObjectPtr aJsonCmds, SimpleCB aFinishedCallback = NULL, FeatureJsonScriptContextPtr* aContextP = NULL);
 
     typedef map<string, string> SubstitutionMap;
 
@@ -181,13 +221,13 @@ namespace p44 {
     /// @param aFinishedCallback called when all commands are done
     /// @param aSubstitutionsP pointer to map of substitutions
     /// @return ok or error
-    ErrorPtr runJsonString(string aJsonString, SimpleCB aFinishedCallback = NULL, ScriptContextPtr* aContextP = NULL, SubstitutionMap* aSubstitutionsP = NULL);
+    ErrorPtr runJsonString(string aJsonString, SimpleCB aFinishedCallback = NULL, FeatureJsonScriptContextPtr* aContextP = NULL, SubstitutionMap* aSubstitutionsP = NULL);
 
     /// execute JSON request(s) from a file
     /// @param aScriptPath resource dir relative (or absolute) path to script
     /// @param aFinishedCallback called when all commands are done
     /// @return ok or error
-    ErrorPtr runJsonFile(const string aScriptPath, SimpleCB aFinishedCallback = NULL, ScriptContextPtr* aContextP = NULL, SubstitutionMap* aSubstitutionsP = NULL);
+    ErrorPtr runJsonFile(const string aScriptPath, SimpleCB aFinishedCallback = NULL, FeatureJsonScriptContextPtr* aContextP = NULL, SubstitutionMap* aSubstitutionsP = NULL);
 
 
     /// get feature by name
@@ -200,6 +240,22 @@ namespace p44 {
 
     /// send (event) message to API
     void sendMessage(JsonObjectPtr aMessage);
+
+    #if EXPRESSION_SCRIPT_SUPPORT
+
+    /// script function support
+    static bool evaluateAsyncFeatureFunctions(EvaluationContext* aEvalContext, const string &aFunc, const FunctionArguments &aArgs, bool &aNotYielded);
+    static void apiCallFunctionDone(EvaluationContext* aEvalContext, JsonObjectPtr aResult, ErrorPtr aError);
+
+    /// queue script for execution
+    /// @param aScriptCode the code for the script
+    /// @param aMessage the message related to the script call, which will be available from messsage() built-in function
+    void queueScript(const string &aScriptCode, JsonObjectPtr aMessage = NULL);
+
+    void runNextScript();
+    void scriptDone(FeatureApiScriptContextPtr aScript);
+
+    #endif // EXPRESSION_SCRIPT_SUPPORT
 
   private:
 
@@ -220,8 +276,8 @@ namespace p44 {
     /// @note: only for FeatureApiRequest
     void sendResponse(JsonObjectPtr aResponse);
 
-    void executeNextCmd(JsonObjectPtr aCmds, int aIndex, ScriptContextPtr aContext, SimpleCB aFinishedCallback);
-    void runCmd(JsonObjectPtr aCmds, int aIndex, ScriptContextPtr aContext, SimpleCB aFinishedCallback);
+    void executeNextCmd(JsonObjectPtr aCmds, int aIndex, FeatureJsonScriptContextPtr aContext, SimpleCB aFinishedCallback);
+    void runCmd(JsonObjectPtr aCmds, int aIndex, FeatureJsonScriptContextPtr aContext, SimpleCB aFinishedCallback);
 
   };
 
