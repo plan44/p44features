@@ -28,21 +28,31 @@
 
 namespace p44 {
 
+
+  class RFIDReader
+  {
+  public:
+    RFIDReader() : lastDetect(Never) {};
+    RFID522Ptr reader;
+    MLMicroSeconds lastDetect;
+    string lastNUID;
+  };
+
+
   class RFIDs : public Feature
   {
     typedef Feature inherited;
 
-    typedef std::list<RFID522Ptr> RFIDReaderList;
+    typedef std::map<int,RFIDReader> RFIDReaderMap;
 
     SPIDevicePtr spiDevice; ///< the generic SPI device where readers are connected
     RFID522::SelectCB readerSelectFunc; ///< the function to select a specific reader by index
     DigitalIoPtr resetOutput; ///< common reset output
     DigitalIoPtr irqInput; ///< common IRQ input
-    RFIDReaderList rfidReaders; ///< the active RFID readers
+    RFIDReaderMap rfidReaders; ///< the active RFID readers
 
-//    RFIDReaderList::iterator nextReaderToPoll;
-//    MLTicket pollTimer; ///< timer for polling RFIDs
-    MLMicroSeconds rfidPollInterval;
+    MLMicroSeconds rfidPollInterval; ///< poll interval
+    MLMicroSeconds sameIdTimeout; ///< how long until
 
     MLTicket rfidTimer; ///< timer for polling and other timing
 

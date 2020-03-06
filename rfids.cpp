@@ -35,7 +35,7 @@ using namespace p44;
 #define FEATURE_NAME "rfids"
 
 #define RFID_DEFAULT_POLL_INTERVAL (100*MilliSecond)
-
+#define RFID_DEFAULT_SAME_ID_TIMEOUT (3*Second)
 
 RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, RFID522::SelectCB aReaderSelectFunc, DigitalIoPtr aResetOutput, DigitalIoPtr aIRQInput) :
   inherited(FEATURE_NAME),
@@ -43,7 +43,8 @@ RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, RFID522::SelectCB aReaderSelectFunc, D
   readerSelectFunc(aReaderSelectFunc),
   resetOutput(aResetOutput),
   irqInput(aIRQInput),
-  rfidPollInterval(RFID_DEFAULT_POLL_INTERVAL)
+  rfidPollInterval(RFID_DEFAULT_POLL_INTERVAL),
+  sameIdTimeout(RFID_DEFAULT_SAME_ID_TIMEOUT)
 {
 
 }
@@ -79,11 +80,15 @@ ErrorPtr RFIDs::initialize(JsonObjectPtr aInitData)
     if (aInitData->get("pollinterval", o)) {
       rfidPollInterval = o->doubleValue()*Second;
     }
+    if (aInitData->get("sameidtimeout", o)) {
+      sameIdTimeout = o->doubleValue()*Second;
+    }
     if (aInitData->get("readers", o)) {
       for (int i=0; i<o->arrayLength(); i++) {
         int readerIndex = o->arrayGet(i)->int32Value();
-        RFID522Ptr reader = RFID522Ptr(new RFID522(spiDevice, readerIndex, readerSelectFunc));
-        rfidReaders.push_back(reader);
+        RFIDReader rd;
+        rd.reader = RFID522Ptr(new RFID522(spiDevice, readerIndex, readerSelectFunc));
+        rfidReaders[readerIndex] = rd;
       }
     }
   }
@@ -158,8 +163,8 @@ void RFIDs::initOperation()
 
 void RFIDs::initReaders()
 {
-  for (RFIDReaderList::iterator pos = rfidReaders.begin(); pos!=rfidReaders.end(); ++pos) {
-    RFID522Ptr reader = *pos;
+  for (RFIDReaderMap::iterator pos = rfidReaders.begin(); pos!=rfidReaders.end(); ++pos) {
+    RFID522Ptr reader = pos->second.reader;
     LOG(LOG_NOTICE, "- Enabling RFID522 reader address #%d", reader->getReaderIndex());
     reader->init();
   }
@@ -174,9 +179,11 @@ void RFIDs::initReaders()
     // just poll IRQ
     rfidTimer.executeOnce(boost::bind(&RFIDs::pollIrq, this, _1), rfidPollInterval);
   }
+  // initialized now
+  setInitialized();
   // start scanning for cards on all readers
-  for (RFIDReaderList::iterator pos = rfidReaders.begin(); pos!=rfidReaders.end(); ++pos) {
-    RFID522Ptr reader = *pos;
+  for (RFIDReaderMap::iterator pos = rfidReaders.begin(); pos!=rfidReaders.end(); ++pos) {
+    RFID522Ptr reader = pos->second.reader;
     FOCUSLOG("Start probing on reader %d", reader->getReaderIndex());
     reader->probeTypeA(boost::bind(&RFIDs::detectedCard, this, reader, _1), true);
   }
@@ -200,11 +207,11 @@ void RFIDs::irqHandler(bool aState)
   else {
     // going low (active)
     FOCUSLOG("+++ RFIDs IRQ went ACTIVE -> calling irq handlers");
-    RFIDReaderList::iterator pos = rfidReaders.begin();
+    RFIDReaderMap::iterator pos = rfidReaders.begin();
     bool pending = false;
     while (pos!=rfidReaders.end()) {
       // let reader check IRQ
-      if ((*pos)->irqHandler()) {
+      if (pos->second.reader->irqHandler()) {
         pending = true;
       }
       #if !POLLING_IRQ
@@ -237,13 +244,19 @@ void RFIDs::detectedCard(RFID522Ptr aReader, ErrorPtr aErr)
 void RFIDs::gotCardNUID(RFID522Ptr aReader, ErrorPtr aErr, const string aNUID)
 {
   if (Error::isOK(aErr)) {
-    string id;
+    string nUID;
     // nUID is LSB first, and last byte is redundant BCC. Reverse to have MSB first, and omit BCC
     for (int i=(int)aNUID.size()-2; i>=0; i--) {
-      string_format_append(id, "%02X", (uint8_t)aNUID[i]);
+      string_format_append(nUID, "%02X", (uint8_t)aNUID[i]);
     }
-    LOG(LOG_NOTICE, "Reader #%d: Card ID %s detected", aReader->getReaderIndex(), id.c_str());
-    rfidDetected(aReader->getReaderIndex(), id);
+    LOG(LOG_NOTICE, "Reader #%d: Card ID %s detected", aReader->getReaderIndex(), nUID.c_str());
+    RFIDReader& r = rfidReaders[aReader->getReaderIndex()];
+    MLMicroSeconds now = MainLoop::now();
+    if (r.lastNUID!=nUID || r.lastDetect==Never || r.lastDetect+sameIdTimeout<now ) {
+      r.lastDetect = now;
+      r.lastNUID = nUID;
+      rfidDetected(aReader->getReaderIndex(), nUID);
+    }
   }
   else {
     LOG(LOG_NOTICE, "Reader #%d: Card ID reading error: %s", aReader->getReaderIndex(), aErr->text());
