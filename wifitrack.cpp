@@ -1154,7 +1154,7 @@ void WifiTrack::displayEncounter(string aIntro, int aImageIndex, PixelColor aCol
       if (LOGENABLED(LOG_INFO)) {
         ViewScrollerPtr sc = disp->getDispScroller();
         ViewStackPtr st;
-        if (sc) st = dynamic_pointer_cast<ViewStack>(sc->getScrolledView());
+        if (sc) st = boost::dynamic_pointer_cast<ViewStack>(sc->getScrolledView());
         if (st) {
           PixelRect r;
           st->getEnclosingContentRect(r);

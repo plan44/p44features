@@ -28,6 +28,7 @@
 #include "dispmatrix.hpp"
 
 #include <math.h>
+#include <set>
 
 namespace p44 {
 
