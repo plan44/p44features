@@ -8,14 +8,16 @@ p44features
 *p44features* needs some classes and functions from the [*p44utils*](https://github.com/plan44/p44utils) and [*p44utils*](https://github.com/plan44/p44lrgraphics) libraries.
 
 Projects using p44features (or cointaining roots that led to it) include 
-the [ETH digital platform](https://plan44.ch/custom/custom.php#leth), the "chatty wifi" installation I brought to the 35c3, or the "hermeldon 2018" remote crocket playing installation (both in the [*hermel* branch of *lethd*](https://github.com/plan44/lethd/tree/hermeld)
+the [ETH digital platform](https://plan44.ch/custom/custom.php#leth), the "chatty wifi" installation I brought to the 35c3, or the "hermeldon 2018" remote crocket playing installation (both in the [*hermel* branch of *lethd*](https://github.com/plan44/lethd/tree/hermeld))
 
 
 Usage
 -----
-*p44features* sources meant to be included as .cpp and .hpp files into a project (usually as a git submodule) and compiled together with the project's other sources.
-A configuration header file *p44features_config.hpp* needs to be present in the project, and allows customizing some aspects of *p44features*.
-To get started, just copy the *p44features_config_TEMPLATE.hpp* to a location in your include path and name it *p44features_config.hpp*.
+*p44features* sources are meant to be included as .cpp and .hpp files into a project (usually as a git submodule) and compiled together with the project's other sources.
+
+A configuration header file *p44features\_config.hpp* needs to be present in the project, and allows customizing some aspects of *p44features*.
+
+To get started, just copy the *p44features\_config\_TEMPLATE.hpp* to a location in your include path and name it *p44features\_config.hpp*.
 
 License
 -------
@@ -32,6 +34,7 @@ List, will expand with each new project:
 - indicators: areas in a LED strip or matrix used as indicators with different styles
 - rfid: multiple cheap RFID readers as user-detecting "buttons"
 - dispmatrix: time synchronized LED matrix displays for large scrolling text display
+- inputs: use any GPIO, or pins of some i2c/spi based I/O extensions, or console keys for simulation, as generic inputs
 - light: simple PWM light dimmer
 - neuron: sensor triggered "conductance" light effect
 - mixloop: accelerometer triggered ball movement detector and light effect
