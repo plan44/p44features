@@ -109,9 +109,12 @@ Feature API
 
 #### Initialisation
 
-{ "cmd":"init", "rfids": { "readers": [*index*, *index*,...], "pollinterval":*pollinterval_seconds* }
+{ "cmd":"init", "rfids": { "readers": [*index*, *index*,...], "pollinterval":*pollinterval_seconds*, "sameidtimeout":*re\_reporting\_timeout* }
 
 - *index* are the physical bus addresses (0..23 in p44rfidctrl and p44rfidhat hardware) to select the reader. Depending on which readers on which cables are in use, this can be a sequence of numbers with or without gaps.
+- *pollinterval_seconds* is the  polling interval for the connected readers, i.e. how often every reader will be checked for the presence of a new RFID tag (default: 0.1 seconds)
+- *re\_reporting\_timeout* is the time during which a reader will not report the same nUID again (default: 3 seconds)
+
 
 #### API events
 
