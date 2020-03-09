@@ -22,7 +22,7 @@
 #define ALWAYS_DEBUG 0
 // - set FOCUSLOGLEVEL to non-zero log level (usually, 5,6, or 7==LOG_DEBUG) to get focus (extensive logging) for this file
 //   Note: must be before including "logger.hpp" (or anything that includes "logger.hpp")
-#define FOCUSLOGLEVEL 6
+#define FOCUSLOGLEVEL 7
 
 #include "rfids.hpp"
 
@@ -36,6 +36,7 @@ using namespace p44;
 
 #define RFID_DEFAULT_POLL_INTERVAL (100*MilliSecond)
 #define RFID_DEFAULT_SAME_ID_TIMEOUT (3*Second)
+#define RFID_POLL_PAUSE_AFTER_DETECT (1*Second)
 
 RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, RFID522::SelectCB aReaderSelectFunc, DigitalIoPtr aResetOutput, DigitalIoPtr aIRQInput) :
   inherited(FEATURE_NAME),
@@ -44,7 +45,8 @@ RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, RFID522::SelectCB aReaderSelectFunc, D
   resetOutput(aResetOutput),
   irqInput(aIRQInput),
   rfidPollInterval(RFID_DEFAULT_POLL_INTERVAL),
-  sameIdTimeout(RFID_DEFAULT_SAME_ID_TIMEOUT)
+  sameIdTimeout(RFID_DEFAULT_SAME_ID_TIMEOUT),
+  pollPauseAfterDetect(RFID_POLL_PAUSE_AFTER_DETECT)
 {
 
 }
@@ -82,6 +84,9 @@ ErrorPtr RFIDs::initialize(JsonObjectPtr aInitData)
     }
     if (aInitData->get("sameidtimeout", o)) {
       sameIdTimeout = o->doubleValue()*Second;
+    }
+    if (aInitData->get("pauseafterdetect", o)) {
+      pollPauseAfterDetect = o->doubleValue()*Second;
     }
     if (aInitData->get("readers", o)) {
       for (int i=0; i<o->arrayLength(); i++) {
@@ -235,7 +240,7 @@ void RFIDs::detectedCard(RFID522Ptr aReader, ErrorPtr aErr)
     aReader->antiCollision(boost::bind(&RFIDs::gotCardNUID, this, aReader, _1, _3));
   }
   else {
-    LOG(LOG_INFO, "Error on reader %d, status='%s' -> restart probing again", aReader->getReaderIndex(), aErr->text());
+    LOG(LOG_DEBUG, "Error on reader %d, status='%s' -> restart probing again", aReader->getReaderIndex(), aErr->text());
     aReader->probeTypeA(boost::bind(&RFIDs::detectedCard, this, aReader, _1), true);
   }
 }
@@ -255,6 +260,14 @@ void RFIDs::gotCardNUID(RFID522Ptr aReader, ErrorPtr aErr, const string aNUID)
     if (r.lastNUID!=nUID || r.lastDetect==Never || r.lastDetect+sameIdTimeout<now ) {
       r.lastDetect = now;
       r.lastNUID = nUID;
+      #if POLLING_IRQ
+      if (pollPauseAfterDetect>0) {
+        // stop polling for now
+        rfidTimer.cancel();
+        // resume after a pause
+        rfidTimer.executeOnce(boost::bind(&RFIDs::pollIrq, this, _1), pollPauseAfterDetect);
+      }
+      #endif
       rfidDetected(aReader->getReaderIndex(), nUID);
     }
   }

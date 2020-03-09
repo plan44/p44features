@@ -52,7 +52,8 @@ namespace p44 {
     RFIDReaderMap rfidReaders; ///< the active RFID readers
 
     MLMicroSeconds rfidPollInterval; ///< poll interval
-    MLMicroSeconds sameIdTimeout; ///< how long until
+    MLMicroSeconds sameIdTimeout; ///< how long the same ID will not get re-reported
+    MLMicroSeconds pollPauseAfterDetect; ///< how long polling pauses after a card detection (to free performance for effects...)
 
     MLTicket rfidTimer; ///< timer for polling and other timing
 

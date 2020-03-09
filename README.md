@@ -109,11 +109,13 @@ Feature API
 
 #### Initialisation
 
-{ "cmd":"init", "rfids": { "readers": [*index*, *index*,...], "pollinterval":*pollinterval_seconds*, "sameidtimeout":*re\_reporting\_timeout* }
+{ "cmd":"init", "rfids": { "readers": [*index*, *index*,...], "pollinterval":*pollinterval_seconds*, "sameidtimeout":*re\_reporting\_timeout* "pauseafterdetect":*poll\_pause\_after\_card\_detected*}
 
 - *index* are the physical bus addresses (0..23 in p44rfidctrl and p44rfidhat hardware) to select the reader. Depending on which readers on which cables are in use, this can be a sequence of numbers with or without gaps.
 - *pollinterval_seconds* is the  polling interval for the connected readers, i.e. how often every reader will be checked for the presence of a new RFID tag (default: 0.1 seconds)
+- *pauseafterdetect* is the  polling interval for the connected readers, i.e. how often every reader will be checked for the presence of a new RFID tag (default: 0.1 seconds)
 - *re\_reporting\_timeout* is the time during which a reader will not report the same nUID again (default: 3 seconds)
+- *poll\_pause\_after\_card\_detected* is the time polling RFIDs will be paused after detecting a card - mainly to free performance for LED effects, as SPI on RPi seems to block a lot (default: 1 second)
 
 
 #### API events
