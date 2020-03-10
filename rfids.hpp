@@ -56,6 +56,7 @@ namespace p44 {
     MLMicroSeconds pollPauseAfterDetect; ///< how long polling pauses after a card detection (to free performance for effects...)
 
     MLTicket rfidTimer; ///< timer for polling and other timing
+    bool pauseIrqHandling; ///< flag to suspend irq checking for a moment
 
 
   public:
