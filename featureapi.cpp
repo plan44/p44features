@@ -527,6 +527,9 @@ void FeatureApi::sendMessage(JsonObjectPtr aMessage)
   if (Error::notOK(err)) {
     LOG(LOG_ERR, "Error sending message to API: %s", err->text());
   }
+  else {
+    LOG(LOG_INFO,"API event message: %s", aMessage->c_strValue());
+  }
 }
 
 
