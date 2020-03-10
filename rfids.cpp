@@ -56,6 +56,7 @@ RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, RFID522::SelectCB aReaderSelectFunc, D
 
 void RFIDs::reset()
 {
+  haltIrqHandling();
   resetOutput->set(0); // put into reset, active low
   rfidReaders.clear();
   inherited::reset();
@@ -142,6 +143,7 @@ void RFIDs::rfidDetected(int aReaderIndex, const string aRFIDnUID)
 
 void RFIDs::resetReaders(SimpleCB aDoneCB)
 {
+  haltIrqHandling();
   resetOutput->set(0); // assert reset = LOW
   rfidTimer.executeOnce(boost::bind(&RFIDs::releaseReset, this, aDoneCB), RESET_TIME);
 }
@@ -183,6 +185,7 @@ void RFIDs::initReaders()
   }
   else {
     // just poll IRQ
+    pauseIrqHandling = false;
     rfidTimer.executeOnce(boost::bind(&RFIDs::pollIrq, this, _1), rfidPollInterval);
   }
   // initialized now
@@ -193,6 +196,13 @@ void RFIDs::initReaders()
     FOCUSLOG("Start probing on reader %d", reader->getReaderIndex());
     reader->probeTypeA(boost::bind(&RFIDs::detectedCard, this, reader, _1), true);
   }
+}
+
+
+void RFIDs::haltIrqHandling()
+{
+  rfidTimer.cancel();
+  pauseIrqHandling = true; // to exit IRQ loop and prevent retriggering timer
 }
 
 
@@ -273,8 +283,7 @@ void RFIDs::gotCardNUID(RFID522Ptr aReader, ErrorPtr aErr, const string aNUID)
       #if POLLING_IRQ
       if (pollPauseAfterDetect>0) {
         // stop polling for now
-        rfidTimer.cancel();
-        pauseIrqHandling = true; // to exit IRQ loop
+        haltIrqHandling();
         // resume after a pause
         rfidTimer.executeOnce(boost::bind(&RFIDs::pollIrq, this, _1), pollPauseAfterDetect);
       }

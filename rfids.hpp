@@ -96,6 +96,7 @@ namespace p44 {
     void initReaders();
 
     void irqHandler(bool aState);
+    void haltIrqHandling();
     void pollIrq(MLTimer &aTimer);
     void detectedCard(RFID522Ptr aReader, ErrorPtr aErr);
     void gotCardNUID(RFID522Ptr aReader, ErrorPtr aErr, const string aNUID);
