@@ -28,6 +28,7 @@
 
 namespace p44 {
 
+  #define POLLING_IRQ 1
 
   class RFIDReader
   {
@@ -55,9 +56,12 @@ namespace p44 {
     MLMicroSeconds sameIdTimeout; ///< how long the same ID will not get re-reported
     MLMicroSeconds pollPauseAfterDetect; ///< how long polling pauses after a card detection (to free performance for effects...)
 
-    MLTicket rfidTimer; ///< timer for polling and other timing
+    MLTicket startupTimer; ///< timer for startup timing
     bool pauseIrqHandling; ///< flag to suspend irq checking for a moment
 
+    #if POLLING_IRQ
+    MLTicket irqTimer; ///< timer for polling IRQ
+    #endif
 
   public:
 
