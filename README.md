@@ -1,14 +1,14 @@
 p44features
 ===========
 
-[![Flattr this git repo](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=luz&url=https://github.com/plan44/p44features&title= p44features&language=&tags=github&category=software) 
+*[[if you want to support p44features development, please consider to sponsor plan44]](https://github.com/sponsors/plan44)* 
 
 *p44features* is a set of free (opensource, GPLv3) C++ classes and functions building a library of "features" for various applications in exhibitions, experiments, art and fun projects. Each "feature" usually drives a particular piece of hardware, such as LEDs, solenoids, sensors etc. The features have a common base class and are accessible via a common JSON API.
 
 *p44features* needs some classes and functions from the [*p44utils*](https://github.com/plan44/p44utils) and [*p44utils*](https://github.com/plan44/p44lrgraphics) libraries.
 
 Projects using p44features (or cointaining roots that led to it) include 
-the [ETH digital platform](https://plan44.ch/custom/custom.php#leth), the "chatty wifi" installation I brought to the 35c3, or the "hermeldon 2018" remote crocket playing installation (both in the [*hermel* branch of *lethd*](https://github.com/plan44/lethd/tree/hermeld))
+the [ETH digital platform](https://plan44.ch/custom#leth), the "chatty wifi" installation I brought to the 35c3, or the "hermeldon 2018" remote crocket playing installation (both in the [*hermel* branch of *lethd*](https://github.com/plan44/lethd/tree/hermeld)). At the time of writing, a large exhibition project based on p44features is in the making.
 
 
 Usage
@@ -44,6 +44,7 @@ List, will expand with each new project:
 
 Feature API
 -----------
+*Note: this is Work in Progress, not all features are documented here*
 
 ### Dispmatrix
 
@@ -51,7 +52,7 @@ Feature API
 
 { "cmd":"init", "dispmatrix": { "installationX": *overall-x*, "installationY": *overall-y*, "rootview": *p44lrgraphics-view-config* }
 
-- *x,y*: position of this p44featured unit in a longer scroller consisting of multiple p44featured hardware units. This allows sending the same global scrolling offsets to all units, and each unit interprets it according to its position in the overall installation.
+- *x,y*: position of this p44feature unit in a longer scroller consisting of multiple p44feature based hardware units. This allows sending the same global scrolling offsets to all units, and each unit interprets it according to its position in the overall installation.
 - if no *p44lrgraphics-view-config* is specified, the root view will be set to a scroller labelled "DISPSCROLLER" filling the entire LEDarrangement. If a custom view config is passed, it should contain a scroller named "DISPSCROLLER".
 - *p44lrgraphics-view-config* can be the view config JSON object itself or a resource file name. A relative filename will be searched in the /dispmatrix subdirectory of the app's resource directory.
 
@@ -144,7 +145,6 @@ Feature API
 
 - *input_name* is a name of the input.
 - *input_value* is the current value of the input
-
 
 
 (c) 2013-2020 by Lukas Zeller / [plan44.ch](https://www.plan44.ch/opensource.php)
