@@ -1,9 +1,9 @@
 //
-//  Copyright (c) 2016-2019 plan44.ch / Lukas Zeller, Zurich, Switzerland
+//  Copyright (c) 2016-2020 plan44.ch / Lukas Zeller, Zurich, Switzerland
 //
 //  Author: Lukas Zeller <luz@plan44.ch>
 //
-//  This file is part of p44lrgraphics.
+//  This file is part of p44features.
 //
 //  p44lrgraphics is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by

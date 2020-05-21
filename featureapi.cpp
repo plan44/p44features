@@ -3,7 +3,7 @@
 //
 //  Authors: Ueli Wahlen <ueli@hotmail.com>, Lukas Zeller <luz@plan44.ch>
 //
-//  This file is part of p44featured.
+//  This file is part of p44features.
 //
 //  pixelboardd is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
