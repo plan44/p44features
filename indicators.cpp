@@ -59,8 +59,8 @@ ErrorPtr Indicators::initialize(JsonObjectPtr aInitData)
 {
   LOG(LOG_NOTICE, "initializing " FEATURE_NAME);
   reset();
-  // { "cmd":"init", "indicators": {}
-  // { "cmd":"init", "indicators": { "rootview": <p44lrgraphics-view-config> }
+  // { "cmd":"init", "indicators": {} }
+  // { "cmd":"init", "indicators": { "rootview": <p44lrgraphics-view-config> } }
   ErrorPtr err;
   JsonObjectPtr o;
   if (ledChainArrangement) {
@@ -104,8 +104,6 @@ ErrorPtr Indicators::processRequest(ApiRequestPtr aRequest)
   if (o) {
     string cmd = o->stringValue();
     // decode commands
-    // Original idea: {chain: 0, from: 0, size: 20}
-    // Now:
     //  minimally: { cmd: "indicate" } /* full area */
     //  normally: { cmd: "indicate", x:0, dx:20, effect="swipe" }
     //  full: { cmd: "indicate", x:0, dx:20, y:0, dy:1, effect:"pulse", t:1 }

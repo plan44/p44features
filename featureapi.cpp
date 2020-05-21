@@ -111,7 +111,8 @@ FeatureApiPtr FeatureApi::sharedApi()
 }
 
 
-FeatureApi::FeatureApi()
+FeatureApi::FeatureApi() :
+  trigger(NULL) // FIXME: add geolocation here
 {
 }
 
@@ -375,6 +376,13 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
       eventScript = o->stringValue();
       return Error::ok();
     }
+    if (reqData->get("triggerexpression", o, true)) {
+      // set a global trigger expression
+      trigger.setCode(o->stringValue());
+      trigger.setEvaluationResultHandler(boost::bind(&FeatureApi::triggerEvaluationExecuted, this, _1));
+      trigger.triggerEvaluation(evalmode_initial);
+      return Error::ok();
+    }
     if (reqData->get("run", o, true)) {
       // directly run a script
       queueScript(o->stringValue());
@@ -414,6 +422,17 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
     }
   }
 }
+
+
+void FeatureApi::triggerEvaluationExecuted(ExpressionValue aEvaluationResult)
+{
+  if (aEvaluationResult.boolValue()) {
+    JsonObjectPtr message = JsonObject::newObj();
+    message->add("triggerresult", aEvaluationResult.jsonValue() );
+    sendMessage(message);
+  }
+}
+
 
 
 ErrorPtr FeatureApi::reset(ApiRequestPtr aRequest)

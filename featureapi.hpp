@@ -185,6 +185,8 @@ namespace p44 {
     typedef std::list<FeatureApiScriptContextPtr> FeatureApiScriptContextsList;
     FeatureApiScriptContextsList scriptRequests;
 
+    TimedEvaluationContext trigger;
+
     #endif
 
   public:
@@ -262,6 +264,7 @@ namespace p44 {
 
     void runNextScript();
     void scriptDone(FeatureApiScriptContextPtr aScript);
+    void triggerEvaluationExecuted(ExpressionValue aEvaluationResult);
 
     #endif // EXPRESSION_SCRIPT_SUPPORT
 
