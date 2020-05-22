@@ -151,7 +151,7 @@ ErrorPtr Splitflaps::processRequest(ApiRequestPtr aRequest)
         string bytes;
         if (o->isType(json_type_string)) {
           // hex string of bytes
-          bytes = hexToBinaryString(o->stringValue().c_str());
+          bytes = hexToBinaryString(o->stringValue().c_str(), true);
         }
         else if (o->isType(json_type_array)) {
           // array of bytes
@@ -215,7 +215,7 @@ ErrorPtr Splitflaps::processRequest(ApiRequestPtr aRequest)
 
 void Splitflaps::rawCommandAnswer(ApiRequestPtr aRequest, const string &aResponse, ErrorPtr aError)
 {
-  aRequest->sendResponse(JsonObject::newString(aResponse), aError);
+  aRequest->sendResponse(JsonObject::newString(binaryToHexString(aResponse, ' ')), aError);
 }
 
 
