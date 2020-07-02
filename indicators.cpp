@@ -57,7 +57,6 @@ Indicators::~Indicators()
 
 ErrorPtr Indicators::initialize(JsonObjectPtr aInitData)
 {
-  LOG(LOG_NOTICE, "initializing " FEATURE_NAME);
   reset();
   // { "cmd":"init", "indicators": {} }
   // { "cmd":"init", "indicators": { "rootview": <p44lrgraphics-view-config> } }
@@ -218,7 +217,7 @@ void Indicators::stop()
 
 void Indicators::runEffect(P44ViewPtr aView, MLMicroSeconds aDuration, JsonObjectPtr aConfig)
 {
-  LOG(LOG_INFO, "Starting effect");
+  OLOG(LOG_INFO, "Starting effect");
   indicatorsView->pushView(aView);
   IndicatorEffectPtr effect = IndicatorEffectPtr(new IndicatorEffect);
   effect->view = aView;
@@ -235,7 +234,7 @@ void Indicators::effectDone(IndicatorEffectPtr aEffect)
   indicatorsView->removeView(aEffect->view);
   activeIndicators.remove(aEffect);
   indicatorsView->requestUpdate();
-  LOG(LOG_INFO, "Effect Done");
+  OLOG(LOG_INFO, "Effect Done");
 }
 
 
@@ -246,7 +245,7 @@ void Indicators::initOperation()
     ledChainArrangement->begin(true);
   }
   else {
-    LOG(LOG_WARNING, FEATURE_NAME ": NOP: no ledchain connected");
+    OLOG(LOG_WARNING, "NOP: no ledchain connected");
   }
   setInitialized();
 }

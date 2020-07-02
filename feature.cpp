@@ -49,13 +49,23 @@ ErrorPtr Feature::processRequest(ApiRequestPtr aRequest)
     }
     return FeatureApiError::err("Feature '%s': unknown cmd '%s'", getName().c_str(), cmd.c_str());
   }
+  else {
+    // decode properties
+    if (reqData->get("logleveloffset", o, true)) {
+      setLogLevelOffset(o->int32Value());
+      return ErrorPtr();
+    }
+  }
   return FeatureApiError::err("Feature '%s': cannot understand request (no cmd)", getName().c_str());
 }
 
 
 JsonObjectPtr Feature::status()
 {
-  if (isInitialized()) return JsonObject::newObj();
+  if (isInitialized()) {
+    JsonObjectPtr status = JsonObject::newObj();
+    status->add("logleveloffset", JsonObject::newInt32(getLogLevelOffset()));
+  }
   return JsonObject::newBool(false);
 }
 

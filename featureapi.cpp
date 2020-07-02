@@ -51,7 +51,7 @@ void FeatureApiRequest::sendResponse(JsonObjectPtr aResponse, ErrorPtr aError)
     aResponse->add("Error", JsonObject::newString(aError->description()));
   }
   if (connection) connection->sendMessage(aResponse);
-  LOG(LOG_INFO,"API answer: %s", aResponse->c_strValue());
+  SOLOG(*FeatureApi::sharedApi(), LOG_INFO,"answer: %s", aResponse->c_strValue());
 }
 
 
@@ -61,7 +61,7 @@ void FeatureApiRequest::sendResponse(JsonObjectPtr aResponse, ErrorPtr aError)
 InternalRequest::InternalRequest(JsonObjectPtr aRequest) :
   inherited(aRequest)
 {
-  LOG(LOG_DEBUG,"Internal API request: %s", aRequest->c_strValue());
+  SOLOG(*FeatureApi::sharedApi(), LOG_DEBUG,"Internal request: %s", aRequest->c_strValue());
 }
 
 
@@ -72,7 +72,7 @@ InternalRequest::~InternalRequest()
 
 void InternalRequest::sendResponse(JsonObjectPtr aResponse, ErrorPtr aError)
 {
-  LOG(LOG_DEBUG,"Internal API answer: %s", aResponse->c_strValue());
+  SOLOG(*FeatureApi::sharedApi(), LOG_DEBUG,"Internal answer: %s", aResponse->c_strValue());
 }
 
 
@@ -134,7 +134,7 @@ ErrorPtr FeatureApi::runJsonFile(const string aScriptPath, SimpleCB aFinishedCal
   err = string_fromfile(fpath, jsonText);
   if (Error::notOK(err)) {
     err->prefixMessage("cannot open JSON file '%s': ", fpath.c_str());
-    LOG(LOG_WARNING, "Script loading error: %s", Error::text(err));
+    OLOG(LOG_WARNING, "Script loading error: %s", Error::text(err));
   }
   else {
     err = runJsonString(jsonText, aFinishedCallback, aContextP, aSubstitutionsP);
@@ -180,7 +180,7 @@ ErrorPtr FeatureApi::runJsonString(string aJsonString, SimpleCB aFinishedCallbac
       err = featureApi->executeJson(script, aFinishedCallback, aContextP);
     }
   }
-  if (!Error::isOK(err)) { LOG(LOG_WARNING, "Script execution error: %s", Error::text(err)); }
+  if (!Error::isOK(err)) { OLOG(LOG_WARNING, "Script execution error: %s", Error::text(err)); }
   return err;
 }
 
@@ -239,7 +239,7 @@ void FeatureApi::runCmd(JsonObjectPtr aCmds, int aIndex, FeatureJsonScriptContex
   }
   ApiRequestPtr req = ApiRequestPtr(new InternalRequest(cmd));
   ErrorPtr err = processRequest(req);
-  if (!Error::isOK(err)) { LOG(LOG_WARNING, "API script step execution error: %s", Error::text(err)); }
+  if (!Error::isOK(err)) { OLOG(LOG_WARNING, "script step execution error: %s", Error::text(err)); }
   executeNextCmd(aCmds, aIndex+1, aContext, aFinishedCallback);
 }
 
@@ -319,7 +319,7 @@ SocketCommPtr FeatureApi::apiConnectionHandler(SocketCommPtr aServerSocketComm)
 void FeatureApi::apiRequestHandler(JsonCommPtr aConnection, ErrorPtr aError, JsonObjectPtr aRequest)
 {
   if (Error::isOK(aError)) {
-    LOG(LOG_INFO,"API request: %s", aRequest->c_strValue());
+    OLOG(LOG_INFO,"request: %s", aRequest->c_strValue());
     ApiRequestPtr req = ApiRequestPtr(new FeatureApiRequest(aRequest, aConnection));
     aError = processRequest(req);
   }
@@ -328,7 +328,7 @@ void FeatureApi::apiRequestHandler(JsonCommPtr aConnection, ErrorPtr aError, Jso
     JsonObjectPtr resp = JsonObject::newObj();
     resp->add("Error", JsonObject::newString(aError->description()));
     aConnection->sendMessage(resp);
-    LOG(LOG_INFO,"API answer: %s", resp->c_strValue());
+    OLOG(LOG_INFO,"answer: %s", resp->c_strValue());
   }
 }
 
@@ -385,7 +385,7 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
     }
     if (reqData->get("run", o, true)) {
       // directly run a script
-      queueScript(o->stringValue());
+      queueScript("API run cmd", o->stringValue());
       return Error::ok();
     }
     #endif // EXPRESSION_SCRIPT_SUPPORT
@@ -441,7 +441,7 @@ ErrorPtr FeatureApi::reset(ApiRequestPtr aRequest)
   for (FeatureMap::iterator f = featureMap.begin(); f!=featureMap.end(); ++f) {
     if (aRequest->getRequest()->get(f->first.c_str())) {
       featureFound = true;
-      LOG(LOG_NOTICE, "resetting feature '%s'", f->first.c_str());
+      OLOG(LOG_NOTICE, "resetting feature '%s'", f->first.c_str());
       f->second->reset();
     }
   }
@@ -466,7 +466,9 @@ ErrorPtr FeatureApi::init(ApiRequestPtr aRequest)
     JsonObjectPtr initData = reqData->get(f->first.c_str());
     if (initData) {
       featureFound = true;
+      SOLOG(*(f->second), LOG_NOTICE, "initializing...");
       err = f->second->initialize(initData);
+      SOLOG(*(f->second), LOG_NOTICE, "initialized: err=%s", Error::text(err));
       if (!Error::isOK(err)) {
         err->prefixMessage("Feature '%s' init failed: ", f->first.c_str());
         return err;
@@ -526,7 +528,7 @@ void FeatureApi::start(const string aApiPort)
   apiServer->setConnectionParams(NULL, aApiPort.c_str(), SOCK_STREAM, AF_INET6);
   apiServer->setAllowNonlocalConnections(true);
   apiServer->startServer(boost::bind(&FeatureApi::apiConnectionHandler, this, _1), 10);
-  LOG(LOG_INFO, "FeatureApi listening on port %s", aApiPort.c_str());
+  OLOG(LOG_INFO, "listening on port %s", aApiPort.c_str());
 }
 
 
@@ -535,19 +537,19 @@ void FeatureApi::sendMessage(JsonObjectPtr aMessage)
   #if EXPRESSION_SCRIPT_SUPPORT
   if (!eventScript.empty()) {
     // call event script
-    queueScript(eventScript, aMessage);
+    queueScript("API event", eventScript, aMessage);
   }
   #endif // EXPRESSION_SCRIPT_SUPPORT
   if (!connection) {
-    LOG(LOG_WARNING, "no API connection, message cannot be sent: %s", aMessage ? aMessage->json_c_str() : "<none>");
+    OLOG(LOG_WARNING, "no connection, message cannot be sent: %s", aMessage ? aMessage->json_c_str() : "<none>");
     return;
   }
   ErrorPtr err = connection->sendMessage(aMessage);
   if (Error::notOK(err)) {
-    LOG(LOG_ERR, "Error sending message to API: %s", err->text());
+    OLOG(LOG_ERR, "Error sending message: %s", err->text());
   }
   else {
-    LOG(LOG_INFO,"API event message: %s", aMessage->c_strValue());
+    OLOG(LOG_INFO,"event message: %s", aMessage->c_strValue());
   }
 }
 
@@ -617,7 +619,7 @@ bool FeatureApi::evaluateAsyncFeatureFunctions(EvaluationContext* aEvalContext, 
 
 void FeatureApi::apiCallFunctionDone(EvaluationContext* aEvalContext, JsonObjectPtr aResult, ErrorPtr aError)
 {
-  LOG(aEvalContext->getEvalLogLevel(), "feature api call returns '%s', error = %s", aResult->c_strValue(), Error::text(aError));
+  SOLOG(*FeatureApi::sharedApi(), LOG_INFO, "call returns '%s', error = %s", aResult->c_strValue(), Error::text(aError));
   ExpressionValue res;
   if (Error::isOK(aError)) {
     res.setJson(aResult);
@@ -629,10 +631,11 @@ void FeatureApi::apiCallFunctionDone(EvaluationContext* aEvalContext, JsonObject
 }
 
 
-void FeatureApi::queueScript(const string &aScriptCode, JsonObjectPtr aMessage)
+void FeatureApi::queueScript(const char *aScriptContextInfo, const string &aScriptCode, JsonObjectPtr aMessage)
 {
   FeatureApiScriptContextPtr script = FeatureApiScriptContextPtr(new FeatureApiScriptContext(aMessage));
   script->setCode(aScriptCode);
+  script->setContextInfo(aScriptContextInfo, this);
   scriptRequests.push_back(script);
   if (scriptRequests.size()==1) {
     // there was no script pending, must start
@@ -644,7 +647,7 @@ void FeatureApi::runNextScript()
 {
   if (!scriptRequests.empty()) {
     FeatureApiScriptContextPtr script = scriptRequests.front();
-    LOG(LOG_INFO, "+++ Starting feature API script");
+    OLOG(LOG_INFO, "+++ Starting script");
     script->execute(true, boost::bind(&FeatureApi::scriptDone, this, script));
   }
 }
@@ -652,7 +655,7 @@ void FeatureApi::runNextScript()
 
 void FeatureApi::scriptDone(FeatureApiScriptContextPtr aScript)
 {
-  LOG(LOG_INFO, "--- Finished feature API script");
+  OLOG(LOG_INFO, "--- Finished script");
   scriptRequests.pop_front();
   runNextScript();
 }

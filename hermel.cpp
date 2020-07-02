@@ -89,7 +89,6 @@ ErrorPtr HermelShoot::shoot(ApiRequestPtr aRequest)
 
 void HermelShoot::initOperation()
 {
-  LOG(LOG_NOTICE, "initializing hermel");
   setInitialized();
   endPulse();
 }

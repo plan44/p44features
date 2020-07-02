@@ -179,7 +179,6 @@ JsonObjectPtr MixLoop::status()
 
 void MixLoop::initOperation()
 {
-  LOG(LOG_NOTICE, "initializing mixloop");
   ledChain1 = LEDChainCommPtr(new LEDChainComm(LEDChainComm::ledtype_ws281x, ledChain1Name, 100));
   ledChain2 = LEDChainCommPtr(new LEDChainComm(LEDChainComm::ledtype_ws281x, ledChain2Name, 100));
   ledChain1->begin();
@@ -251,13 +250,13 @@ void MixLoop::accelInit()
       // set data rate
       adxl345_writebyte(accelerometer, 0x2C, 0x09); // high power, 50 Hz data rate / 25Hz bandwidth
       // ready now, start sampling
-      LOG(LOG_NOTICE, "accelerometer ready -> start sampling now");
+      OLOG(LOG_NOTICE, "accelerometer ready -> start sampling now");
       accelMeasure();
       return;
     }
   }
   // retry later again
-  FOCUSLOG("waiting for accelerometer to get ready, reg 0x2D=0x%02x", b);
+  FOCUSOLOG("waiting for accelerometer to get ready, reg 0x2D=0x%02x", b);
   measureTicket.executeOnce(boost::bind(&MixLoop::accelInit, this), 1*Second);
 }
 
@@ -282,7 +281,7 @@ void MixLoop::accelMeasure()
   }
   MLMicroSeconds now = MainLoop::now();
   if (changed) {
-    FOCUSLOG("[%06lldmS] X = %5hd, Y = %5hd, Z = %5hd, raw changeAmount = %.0f", (accelStart!=Never ? now-accelStart : 0)/MilliSecond, accel[0], accel[1], accel[2], changeamount);
+    FOCUSOLOG("[%06lldmS] X = %5hd, Y = %5hd, Z = %5hd, raw changeAmount = %.0f", (accelStart!=Never ? now-accelStart : 0)/MilliSecond, accel[0], accel[1], accel[2], changeamount);
   }
   // process
   changeamount -= accelChangeCutoff;
@@ -294,14 +293,14 @@ void MixLoop::accelMeasure()
       if (now<accelStart+hitWindowStart+hitWindowDuration) {
         // before end of window, look out for hit
         if (changeamount>hitMinAccelChange) {
-          LOG(LOG_NOTICE, "HIT DETECTED with raw changeamount=%.0f, at %lldmS!", changeamount, (now-accelStart)/MilliSecond);
+          OLOG(LOG_NOTICE, "HIT DETECTED with raw changeamount=%.0f, at %lldmS!", changeamount, (now-accelStart)/MilliSecond);
           showHit();
           hitDetectorActive = false;
         }
       }
       else {
         // after end of window
-        LOG(LOG_NOTICE, "Hit detector timed out");
+        OLOG(LOG_NOTICE, "Hit detector timed out");
         dispNormal();
         hitDetectorActive = false;
       }
@@ -316,7 +315,7 @@ void MixLoop::accelMeasure()
   if (accelIntegral<0) accelIntegral = 0;
   if (accelIntegral>maxIntegral) accelIntegral = maxIntegral;
   if (accelIntegral>0) {
-    FOCUSLOG("     changeAmount = %.0f, integral = %.0f", changeamount, accelIntegral);
+    FOCUSOLOG("     changeAmount = %.0f, integral = %.0f", changeamount, accelIntegral);
   }
   // possibly trigger hit detector
   if (!hitDetectorActive) {
@@ -324,7 +323,7 @@ void MixLoop::accelMeasure()
       accelStart = now;
       hitDetectorActive = true;
       #if ENABLE_LEGACY_FEATURE_SCRIPTS
-      LOG(LOG_NOTICE, "Hit detector activated with integral = %.0f", accelIntegral);
+      OLOG(LOG_NOTICE, "Hit detector activated with integral = %.0f", accelIntegral);
       FeatureApi::sharedApi()->runJsonFile("scripts/game.json", NULL, &scriptContext);
       #endif
       JsonObjectPtr message = JsonObject::newObj();
@@ -344,7 +343,7 @@ void MixLoop::showAccel(double aFraction)
 {
   if (ledChain1 && !hitShowing) {
     int onLeds = aFraction*numLeds;
-    LOG(LOG_DEBUG, "onLeds=%d", onLeds);
+    OLOG(LOG_DEBUG, "onLeds=%d", onLeds);
     for (int i=0; i<numLeds; i++) {
       if (i<onLeds) {
         ledChain1->setColor(numLeds-1-i, 255, 255-(255*i/numLeds), 0);

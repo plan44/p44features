@@ -122,7 +122,6 @@ WifiTrack::~WifiTrack()
 
 ErrorPtr WifiTrack::initialize(JsonObjectPtr aInitData)
 {
-  LOG(LOG_NOTICE, "initializing wifitrack");
   reset();
   JsonObjectPtr o;
   if (aInitData->get("directDisplay", o)) {
@@ -676,7 +675,7 @@ static void createOUItable()
 void WifiTrack::loadOUIs()
 {
   if (!ouiNames || !ouis.empty()) return; // prevent re-loading
-  LOG(LOG_NOTICE, "Loading OUIs");
+  OLOG(LOG_NOTICE, "Loading OUIs");
   typedef std::map<string, const char*> NameMap;
   NameMap nameMap;
   string line;
@@ -713,7 +712,7 @@ void WifiTrack::loadOUIs()
       ouis[msrch] = nameP;
     }
   }
-  LOG(LOG_NOTICE, "Loaded %lu OUIs with %lu distinct names", ouis.size(), nameMap.size());
+  OLOG(LOG_NOTICE, "Loaded %lu OUIs with %lu distinct names", ouis.size(), nameMap.size());
 }
 
 
@@ -723,7 +722,7 @@ void WifiTrack::loadOUIs()
 void WifiTrack::initOperation()
 {
   restartTicket.cancel(); // cancel pending restarts
-  LOG(LOG_NOTICE, "initializing wifitrack");
+  OLOG(LOG_NOTICE, "initializing wifitrack");
   // display
   if (directDisplay) {
     disp = boost::dynamic_pointer_cast<DispMatrix>(FeatureApi::sharedApi()->getFeature("dispmatrix"));
@@ -743,13 +742,13 @@ void WifiTrack::initOperation()
   #endif
   err = load(Application::sharedApplication()->tempPath(WIFITRACK_STATE_FILE_NAME));
   if (Error::isOK(err)) {
-    LOG(LOG_NOTICE, ">>> loaded data from temp file");
+    OLOG(LOG_NOTICE, ">>> loaded data from temp file");
   }
   else {
     // try persistent path
     err = load(Application::sharedApplication()->dataPath(WIFITRACK_STATE_FILE_NAME));
     if (Error::isOK(err)) {
-      LOG(LOG_NOTICE, ">>> loaded data from persistent data file");
+      OLOG(LOG_NOTICE, ">>> loaded data from persistent data file");
     }
   }
   if (Error::isOK(err)) {
@@ -758,7 +757,7 @@ void WifiTrack::initOperation()
     lastDataAutoSave = lastTempAutoSave;
   }
   else {
-    LOG(LOG_ERR, "could not load state: %s", Error::text(err));
+    OLOG(LOG_ERR, "could not load state: %s", Error::text(err));
   }
   startScanner();
 }
@@ -786,7 +785,7 @@ void WifiTrack::startScanner()
     cmd = "ssh -p 22 root@1a8479bcaf76.cust.devices.plan44.ch \"" + cmd + "\"";
     #endif
     int resultFd = -1;
-    LOG(LOG_NOTICE, "Starting tcpdump: %s", cmd.c_str());
+    OLOG(LOG_NOTICE, "Starting tcpdump: %s", cmd.c_str());
     dumpPid = MainLoop::currentMainLoop().fork_and_system(boost::bind(&WifiTrack::dumpEnded, this, _1), cmd.c_str(), true, &resultFd);
     if (dumpPid>=0 && resultFd>=0) {
       dumpStream = FdCommPtr(new FdComm(MainLoop::currentMainLoop()));
@@ -801,7 +800,7 @@ void WifiTrack::startScanner()
 
 void WifiTrack::dumpEnded(ErrorPtr aError)
 {
-  LOG(LOG_NOTICE, "tcpdump terminated with status: %s", Error::text(aError));
+  OLOG(LOG_NOTICE, "tcpdump terminated with status: %s", Error::text(aError));
   restartTicket.executeOnce(boost::bind(&WifiTrack::startScanner, this), 5*Second);
 }
 
@@ -823,12 +822,12 @@ void WifiTrack::restartScanner()
 void WifiTrack::gotDumpLine(ErrorPtr aError)
 {
   if (!Error::isOK(aError)) {
-    LOG(LOG_ERR, "error reading from tcp output stream: %s", Error::text(aError));
+    OLOG(LOG_ERR, "error reading from tcp output stream: %s", Error::text(aError));
     return;
   }
   string line;
   if (dumpStream->receiveDelimitedString(line)) {
-    LOG(LOG_DEBUG, "TCPDUMP: %s", line.c_str());
+    OLOG(LOG_DEBUG, "TCPDUMP: %s", line.c_str());
     // 17:40:22.356367 1.0 Mb/s 2412 MHz 11b -75dBm signal -75dBm signal antenna 0 -109dBm signal antenna 1 BSSID:5c:49:79:6d:28:1a (oui Unknown) DA:5c:49:79:6d:28:1a (oui Unknown) SA:c8:bc:c8:be:0d:0a (oui Unknown) Probe Request (iWay_Fiber_bu725) [1.0* 2.0* 5.5* 11.0* 6.0 9.0 12.0 18.0 Mbit]
     bool decoded = false;
     bool beacon = false;
@@ -868,7 +867,7 @@ void WifiTrack::gotDumpLine(ErrorPtr aError)
             ssid = line.substr(s, e-s);
             // - check min rssi
             if (rssi<minProcessRssi) {
-              FOCUSLOG("Too weak: RSSI=%d<%d, MAC=%s, SSID='%s'", rssi, minProcessRssi, macAddressToString(mac,':').c_str(), ssid.c_str());
+              FOCUSOLOG("Too weak: RSSI=%d<%d, MAC=%s, SSID='%s'", rssi, minProcessRssi, macAddressToString(mac,':').c_str(), ssid.c_str());
             }
             else {
               decoded = true;
@@ -896,14 +895,14 @@ void WifiTrack::gotDumpLine(ErrorPtr aError)
       if (beacon) {
         // just record beacon sighting
         if (s->beaconSeenLast==Never) {
-          LOG(LOG_INFO, "New Beacon found: RSSI=%d, SSID='%s'", rssi, ssid.c_str());
+          OLOG(LOG_INFO, "New Beacon found: RSSI=%d, SSID='%s'", rssi, ssid.c_str());
         }
         s->beaconSeenLast = now;
         s->beaconRssi = rssi;
       }
       else {
         // process probe request
-        FOCUSLOG("RSSI=%d, MAC=%s, SSID='%s'", rssi, macAddressToString(mac,':').c_str(), ssid.c_str());
+        FOCUSOLOG("RSSI=%d, MAC=%s, SSID='%s'", rssi, macAddressToString(mac,':').c_str(), ssid.c_str());
         s->seenLast = now;
         s->seenCount++;
         // - MAC
@@ -949,7 +948,7 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
 {
   WTPersonPtr person = aMac->person; // default to already existing, if any
   // log
-  if (FOCUSLOGENABLED) {
+  if (FOCUSOLOGENABLED) {
     string s;
     const char* sep = "";
     for (WTSSidSet::iterator pos = aMac->ssids.begin(); pos!=aMac->ssids.end(); ++pos) {
@@ -958,12 +957,12 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
       string_format_append(s, "%s%s (%ld)", sep, sstr.c_str(), (*pos)->seenCount);
       sep = ", ";
     }
-    FOCUSLOG("Sighted%s: MAC=%s, %s (%ld), RSSI=%d,%d,%d : %s", person ? " and already has person" : "", macAddressToString(aMac->mac,':').c_str(), nonNullCStr(aMac->ouiName), aMac->seenCount, aMac->worstRssi, aMac->lastRssi, aMac->bestRssi, s.c_str());
+    FOCUSOLOG("Sighted%s: MAC=%s, %s (%ld), RSSI=%d,%d,%d : %s", person ? " and already has person" : "", macAddressToString(aMac->mac,':').c_str(), nonNullCStr(aMac->ouiName), aMac->seenCount, aMac->worstRssi, aMac->lastRssi, aMac->bestRssi, s.c_str());
   }
   // process
   if (aNewSSidForMac && aSSid->macs.size()<tooCommonMacCount) {
     // a new SSID for this Mac, not too commonly used
-    FOCUSLOG("- not too common (only %lu MACs)", aSSid->macs.size());
+    FOCUSOLOG("- not too common (only %lu MACs)", aSSid->macs.size());
     WTMacSet relatedMacs;
     WTMacPtr mostCommonMac;
     WTPersonPtr mostProbablePerson;
@@ -984,7 +983,7 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
           }
         }
         if (commonSsids<minCommonSsidCount) continue; // not a candidate
-        LOG(LOG_INFO, "- This MAC %s has %d SSIDs in common with %s -> link to same person",
+        OLOG(LOG_INFO, "- This MAC %s has %d SSIDs in common with %s -> link to same person",
           macAddressToString(aMac->mac,':').c_str(),
           commonSsids,
           macAddressToString((*mpos)->mac,':').c_str()
@@ -1015,7 +1014,7 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
     if (person) {
       // assign to all macs found related
       if (person->macs.insert(aMac).second) {
-        LOG(LOG_NOTICE, "+++ MAC %s, %s via '%s' (just sighted) -> now linked to person '%s' (%d/#%s), MACs=%lu",
+        OLOG(LOG_NOTICE, "+++ MAC %s, %s via '%s' (just sighted) -> now linked to person '%s' (%d/#%s), MACs=%lu",
           macAddressToString(aMac->mac,':').c_str(),
           nonNullCStr(aMac->ouiName),
           aSSid->ssid.c_str(),
@@ -1040,14 +1039,14 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
               person->seenFirst = oldPerson->seenFirst; // inherit age
               if (person->bestRssi<oldPerson->bestRssi) person->bestRssi = oldPerson->bestRssi;
               if (person->worstRssi>oldPerson->worstRssi) person->worstRssi = oldPerson->worstRssi;
-              LOG(LOG_NOTICE, "--- Using older appearance '%s' (%d/#%s) for new combined person from now on",
+              OLOG(LOG_NOTICE, "--- Using older appearance '%s' (%d/#%s) for new combined person from now on",
                 oldPerson->name.c_str(),
                 oldPerson->imageIndex,
                 pixelToWebColor(oldPerson->color).c_str()
               );
             }
             else {
-              LOG(LOG_NOTICE, "--- Person '%s' (%d/#%s) not linked to a MAC any more -> deleted",
+              OLOG(LOG_NOTICE, "--- Person '%s' (%d/#%s) not linked to a MAC any more -> deleted",
                 oldPerson->name.c_str(),
                 oldPerson->imageIndex,
                 pixelToWebColor(oldPerson->color).c_str()
@@ -1058,7 +1057,7 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
         // assign new person
         (*mpos)->person = person;
         if (person->macs.insert(*mpos).second) {
-          LOG(LOG_NOTICE, "+++ Found other MAC %s, %s related -> now linked to person '%s' (%d/#%s), MACs=%lu",
+          OLOG(LOG_NOTICE, "+++ Found other MAC %s, %s related -> now linked to person '%s' (%d/#%s), MACs=%lu",
             macAddressToString((*mpos)->mac,':').c_str(),
             nonNullCStr((*mpos)->ouiName),
             person->name.c_str(),
@@ -1079,7 +1078,7 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
     if (person->bestRssi<person->lastRssi) person->bestRssi = person->lastRssi;
     if (person->worstRssi>person->lastRssi) person->worstRssi = person->lastRssi;
     if (person->seenFirst==Never) person->seenFirst = person->seenLast;
-    LOG(person->hidden || aMac->hidden ? LOG_DEBUG : LOG_INFO, "=== Recognized person%s, '%s', (%d/#%s), linked MACs=%lu, via ssid='%s', MAC=%s, %s%s (%d, best: %d)",
+    OLOG(person->hidden || aMac->hidden ? LOG_DEBUG : LOG_INFO, "=== Recognized person%s, '%s', (%d/#%s), linked MACs=%lu, via ssid='%s', MAC=%s, %s%s (%d, best: %d)",
       person->hidden ? " (hidden)" : "",
       person->name.c_str(),
       person->imageIndex,
@@ -1108,7 +1107,7 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
             }
           }
         }
-        LOG(LOG_DEBUG, "minMacs = %ld, relevantSSid='%s'", minMacs, relevantSSid ? relevantSSid->ssid.c_str() : "<none>");
+        OLOG(LOG_DEBUG, "minMacs = %ld, relevantSSid='%s'", minMacs, relevantSSid ? relevantSSid->ssid.c_str() : "<none>");
         if (relevantSSid) {
           nameToShow = relevantSSid->ssid;
         }
@@ -1116,7 +1115,7 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
       if (!nameToShow.empty()) {
         // show message
         person->shownLast = person->seenLast;
-        LOG(LOG_NOTICE, "*** Showing person as '%s' (%d/#%s) via %s, %s / '%s' (%d, best: %d)",
+        OLOG(LOG_NOTICE, "*** Showing person as '%s' (%d/#%s) via %s, %s / '%s' (%d, best: %d)",
           nameToShow.c_str(),
           person->imageIndex,
           pixelToWebColor(person->color).c_str(),
@@ -1134,12 +1133,12 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
   MLMicroSeconds now = MainLoop::now();
   if (saveTempInterval!=Never && now>lastTempAutoSave+saveTempInterval) {
     lastTempAutoSave = now;
-    LOG(LOG_NOTICE,">>> auto-saving data to temp file")
+    OLOG(LOG_NOTICE,">>> auto-saving data to temp file")
     save(Application::sharedApplication()->tempPath(WIFITRACK_STATE_FILE_NAME));
   }
   if (saveDataInterval!=Never && now>lastDataAutoSave+saveDataInterval) {
     lastDataAutoSave = now;
-    LOG(LOG_NOTICE,">>> auto-saving data to (persistent) data file")
+    OLOG(LOG_NOTICE,">>> auto-saving data to (persistent) data file")
     save(Application::sharedApplication()->dataPath(WIFITRACK_STATE_FILE_NAME));
   }
 }
@@ -1151,19 +1150,19 @@ void WifiTrack::displayEncounter(string aIntro, int aImageIndex, PixelColor aCol
   if (directDisplay && disp) {
     MLMicroSeconds rst = disp->getRemainingScrollTime(true, true); // purge old views
     if (rst<maxDisplayDelay) {
-      if (LOGENABLED(LOG_INFO)) {
+      if (OLOGENABLED(LOG_INFO)) {
         ViewScrollerPtr sc = disp->getDispScroller();
         ViewStackPtr st;
         if (sc) st = boost::dynamic_pointer_cast<ViewStack>(sc->getScrolledView());
         if (st) {
           PixelRect r;
           st->getEnclosingContentRect(r);
-          LOG(LOG_INFO, "Remaining scroll time before this message will appear is %.2f Seconds, scrollX=%d, frame_x=%d/dx=%d, content_x=%d/dx=%d, enclosing_x=%d/dx=%d, stacksz=%zu", (double)rst/Second, (int)sc->getOffsetX(), st->getFrame().x, st->getFrame().dx, st->getContent().x, st->getContent().dx, r.x, r.dx, st->numViews());
+          OLOG(LOG_INFO, "Remaining scroll time before this message will appear is %.2f Seconds, scrollX=%d, frame_x=%d/dx=%d, content_x=%d/dx=%d, enclosing_x=%d/dx=%d, stacksz=%zu", (double)rst/Second, (int)sc->getOffsetX(), st->getFrame().x, st->getFrame().dx, st->getContent().x, st->getContent().dx, r.x, r.dx, st->numViews());
         }
       }
       if (rst<-1*Second) {
         // scrolling is derailed, re-sync
-        LOG(LOG_WARNING, "Scrolling de-synchronized (actual content out of view) -> reset scrolling");
+        OLOG(LOG_WARNING, "Scrolling de-synchronized (actual content out of view) -> reset scrolling");
         disp->resetScroll();
       }
       #if ENABLE_LEGACY_FEATURE_SCRIPTS
@@ -1184,7 +1183,7 @@ void WifiTrack::displayEncounter(string aIntro, int aImageIndex, PixelColor aCol
       #endif // ENABLE_LEGACY_FEATURE_SCRIPTS
     }
     else {
-      LOG(LOG_WARNING, "Cannot push to scroll text (scroll delay would be > %.1f Seconds)", (double)maxDisplayDelay/Second);
+      OLOG(LOG_WARNING, "Cannot push to scroll text (scroll delay would be > %.1f Seconds)", (double)maxDisplayDelay/Second);
     }
   }
   if (apiNotify) {
@@ -1210,12 +1209,12 @@ bool WifiTrack::needContentHandler()
 {
   if (!loadingContent) {
     loadingContent = true;
-    FOCUSLOG("Display needs content - calling wifipause script");
+    FOCUSOLOG("Display needs content - calling wifipause script");
     #if ENABLE_LEGACY_FEATURE_SCRIPTS
     ErrorPtr err = FeatureApi::sharedApi()->runJsonFile("scripts/wifipause.json", boost::bind(&WifiTrack::contentLoaded, this), &scriptContext, NULL);
     if (!Error::isOK(err)) {
       loadingContent = false;
-      LOG(LOG_WARNING, "wifipause script could not be run: %s", Error::text(err));
+      OLOG(LOG_WARNING, "wifipause script could not be run: %s", Error::text(err));
     }
     #endif
     // report
@@ -1230,7 +1229,7 @@ bool WifiTrack::needContentHandler()
 void WifiTrack::contentLoaded()
 {
   loadingContent = false;
-  FOCUSLOG("Content loading complete");
+  FOCUSOLOG("Content loading complete");
 }
 
 

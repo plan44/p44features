@@ -92,7 +92,6 @@ ErrorPtr Light::fade(ApiRequestPtr aRequest)
 
 void Light::initOperation()
 {
-  LOG(LOG_NOTICE, "initializing light");
   setInitialized();
 }
 

@@ -110,7 +110,6 @@ JsonObjectPtr Inputs::status()
 
 void Inputs::initOperation()
 {
-  LOG(LOG_NOTICE, "initializing " FEATURE_NAME);
   setInitialized();
 }
 

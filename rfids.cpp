@@ -74,7 +74,6 @@ RFIDs::~RFIDs()
 
 ErrorPtr RFIDs::initialize(JsonObjectPtr aInitData)
 {
-  LOG(LOG_NOTICE, "initializing " FEATURE_NAME);
   reset();
   // { "cmd":"init", "rfids": { "readers":[0,1,2,3,7,8,12,13] } }
   // { "cmd":"init", "rfids": { "pollinterval":0.1, "readers":[0,1,2,7,9,23] } }
@@ -162,7 +161,7 @@ void RFIDs::resetDone(SimpleCB aDoneCB)
 
 void RFIDs::initOperation()
 {
-  LOG(LOG_NOTICE, "- Resetting all readers");
+  OLOG(LOG_NOTICE, "- Resetting all readers");
   resetReaders(boost::bind(&RFIDs::initReaders, this));
 }
 
@@ -171,14 +170,14 @@ void RFIDs::initReaders()
 {
   for (RFIDReaderMap::iterator pos = rfidReaders.begin(); pos!=rfidReaders.end(); ++pos) {
     RFID522Ptr reader = pos->second.reader;
-    LOG(LOG_NOTICE, "- Enabling RFID522 reader address #%d", reader->getReaderIndex());
+    OLOG(LOG_NOTICE, "- Enabling RFID522 reader address #%d", reader->getReaderIndex());
     reader->init();
   }
   // install IRQ
   if (!POLLING_IRQ && irqInput)
   {
     if (!irqInput->setInputChangedHandler(boost::bind(&RFIDs::irqHandler, this, _1), 0, Never)) {
-      LOG(LOG_ERR, "IRQ pin must have edge detection!");
+      OLOG(LOG_ERR, "IRQ pin must have edge detection!");
     }
   }
   else {
@@ -191,7 +190,7 @@ void RFIDs::initReaders()
   // start scanning for cards on all readers
   for (RFIDReaderMap::iterator pos = rfidReaders.begin(); pos!=rfidReaders.end(); ++pos) {
     RFID522Ptr reader = pos->second.reader;
-    FOCUSLOG("Start probing on reader %d", reader->getReaderIndex());
+    FOCUSOLOG("Start probing on reader %d", reader->getReaderIndex());
     reader->probeTypeA(boost::bind(&RFIDs::detectedCard, this, reader, _1), true);
   }
 }
@@ -221,11 +220,11 @@ void RFIDs::irqHandler(bool aState)
   irqTimer.cancel();
   if (aState) {
     // going high (inactive)
-    FOCUSLOG("--- RFIDs IRQ went inactive");
+    FOCUSOLOG("--- RFIDs IRQ went inactive");
   }
   else {
     // going low (active)
-    FOCUSLOG("+++ RFIDs IRQ went ACTIVE -> calling irq handlers");
+    FOCUSOLOG("+++ RFIDs IRQ went ACTIVE -> calling irq handlers");
     RFIDReaderMap::iterator pos = rfidReaders.begin();
     bool pending = false;
     while (pos!=rfidReaders.end()) {
@@ -240,7 +239,7 @@ void RFIDs::irqHandler(bool aState)
       #if !POLLING_IRQ
       if (irqInput && irqInput->isSet()==true) {
         // served!
-        FOCUSLOG("IRQ served, irqline is HIGH now");
+        FOCUSOLOG("IRQ served, irqline is HIGH now");
         break;
       }
       #endif
@@ -254,11 +253,11 @@ void RFIDs::irqHandler(bool aState)
 void RFIDs::detectedCard(RFID522Ptr aReader, ErrorPtr aErr)
 {
   if (Error::isOK(aErr)) {
-    LOG(LOG_NOTICE, "Detected card on reader %d", aReader->getReaderIndex());
+    OLOG(LOG_NOTICE, "Detected card on reader %d", aReader->getReaderIndex());
     aReader->antiCollision(boost::bind(&RFIDs::gotCardNUID, this, aReader, _1, _3));
   }
   else {
-    LOG(LOG_DEBUG, "Error on reader %d, status='%s' -> restart probing again", aReader->getReaderIndex(), aErr->text());
+    OLOG(LOG_DEBUG, "Error on reader %d, status='%s' -> restart probing again", aReader->getReaderIndex(), aErr->text());
     aReader->probeTypeA(boost::bind(&RFIDs::detectedCard, this, aReader, _1), true);
   }
 }
@@ -272,7 +271,7 @@ void RFIDs::gotCardNUID(RFID522Ptr aReader, ErrorPtr aErr, const string aNUID)
     for (int i=(int)aNUID.size()-2; i>=0; i--) {
       string_format_append(nUID, "%02X", (uint8_t)aNUID[i]);
     }
-    LOG(LOG_NOTICE, "Reader #%d: Card ID %s detected", aReader->getReaderIndex(), nUID.c_str());
+    OLOG(LOG_NOTICE, "Reader #%d: Card ID %s detected", aReader->getReaderIndex(), nUID.c_str());
     RFIDReader& r = rfidReaders[aReader->getReaderIndex()];
     MLMicroSeconds now = MainLoop::now();
     if (r.lastNUID!=nUID || r.lastDetect==Never || r.lastDetect+sameIdTimeout<now ) {
@@ -290,7 +289,7 @@ void RFIDs::gotCardNUID(RFID522Ptr aReader, ErrorPtr aErr, const string aNUID)
     }
   }
   else {
-    LOG(LOG_NOTICE, "Reader #%d: Card ID reading error: %s", aReader->getReaderIndex(), aErr->text());
+    OLOG(LOG_NOTICE, "Reader #%d: Card ID reading error: %s", aReader->getReaderIndex(), aErr->text());
   }
   // continue probing
   aReader->probeTypeA(boost::bind(&RFIDs::detectedCard, this, aReader, _1), true);

@@ -165,7 +165,7 @@ namespace p44 {
 
 
 
-  class FeatureApi : public P44Obj
+  class FeatureApi : public P44LoggingObj
   {
     friend class FeatureApiRequest;
 
@@ -193,6 +193,10 @@ namespace p44 {
 
     FeatureApi();
     virtual ~FeatureApi();
+
+    /// @return the prefix to be used for logging from this object
+    virtual string logContextPrefix() { return "FeatureApi"; }
+
 
     /// singleton
     static FeatureApiPtr sharedApi();
@@ -260,7 +264,7 @@ namespace p44 {
     /// queue script for execution
     /// @param aScriptCode the code for the script
     /// @param aMessage the message related to the script call, which will be available from messsage() built-in function
-    void queueScript(const string &aScriptCode, JsonObjectPtr aMessage = NULL);
+    void queueScript(const char *aScriptContextInfo, const string &aScriptCode, JsonObjectPtr aMessage = NULL);
 
     void runNextScript();
     void scriptDone(FeatureApiScriptContextPtr aScript);

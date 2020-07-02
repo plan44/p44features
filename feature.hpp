@@ -26,7 +26,7 @@
 
 namespace p44 {
 
-  class Feature : public P44Obj
+  class Feature : public P44LoggingObj
   {
 
     bool initialized;
@@ -35,6 +35,9 @@ namespace p44 {
   public:
 
     Feature(const string aName);
+
+    /// @return the prefix to be used for logging from this object
+    virtual string logContextPrefix() { return string_format("Feature '%s'", name.c_str()); }
 
     /// initialize the feature
     /// @param aInitData the init data object specifying feature init details
@@ -68,7 +71,7 @@ namespace p44 {
     void setInitialized() { initialized = true; }
 
     /// send event message
-    /// @param aEventMessage the API request to process
+    /// @param aMessage the API request to process
     /// @note event messages are messages sent by a feature without a preceeding request
     void sendEventMessage(JsonObjectPtr aMessage);
 

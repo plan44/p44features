@@ -5,7 +5,7 @@ p44features
 
 *p44features* is a set of free (opensource, GPLv3) C++ classes and functions building a library of "features" for various applications in exhibitions, experiments, art and fun projects. Each "feature" usually drives a particular piece of hardware, such as LEDs, solenoids, sensors etc. The features have a common base class and are accessible via a common JSON API.
 
-*p44features* needs some classes and functions from the [*p44utils*](https://github.com/plan44/p44utils) and [*p44utils*](https://github.com/plan44/p44lrgraphics) libraries.
+*p44features* needs some classes and functions from the [*p44utils*](https://github.com/plan44/p44utils) and [*p44lrgraphics*](https://github.com/plan44/p44lrgraphics) libraries.
 
 Projects using p44features (or cointaining roots that led to it) include 
 the [ETH digital platform](https://plan44.ch/custom#leth), the "chatty wifi" installation I brought to the 35c3, or the "hermeldon 2018" remote crocket playing installation (both in the [*hermel* branch of *lethd*](https://github.com/plan44/lethd/tree/hermeld)). At the time of writing, a large exhibition project based on p44features is in the making.
@@ -29,7 +29,7 @@ If that's a problem for your particular application, I am open to provide a comm
 Features
 --------
 
-List, will expand with each new project:
+List of currently available features, will expand with each new project:
 
 - indicators: areas in a LED strip or matrix used as indicators with different styles
 - rfid: multiple cheap RFID readers as user-detecting "buttons"
@@ -45,6 +45,31 @@ List, will expand with each new project:
 Feature API
 -----------
 *Note: this is Work in Progress, not all features are documented here*
+
+### General
+
+Feature API calls consist of a JSON object. One call can contain one command and/or optionally property values to set.
+
+- A command consists of a *cmd* field containing the command name plus possibly some parameters. Commands directed to a specific feature always need the *feature* parameter.
+- Setting a property consists of a propertyname:value JSON field
+- The *init* command is special in that it always has a single parameter named after the feature to initialize, it's value being the configuration for the feature (just *true* in simple features w/o config, but often a JSON object containing config data in a feature specific format.
+
+See below for examples
+
+### common to all features
+
+{ "cmd":"status" }
+
+- get status of all features
+
+{ "cmd":"status", "feature": "*featurename*" }
+
+- get status of all features
+
+{ "logleveloffset":*offset*, "feature": "*featurename*" }
+
+- set log level offset property for a feature (making its log more/less verbose)
+
 
 ### Dispmatrix
 

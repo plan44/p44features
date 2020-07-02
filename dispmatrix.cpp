@@ -60,7 +60,7 @@ DispMatrix::DispMatrix(LEDChainArrangementPtr aLedChainArrangement) :
         initialize(cfg);
       }
       else {
-        LOG(LOG_ERR, "dispmatrix configuration failed: %s", err->text());
+        OLOG(LOG_ERR, "configuration failed: %s", err->text());
       }
     }
   }
@@ -87,7 +87,6 @@ DispMatrix::~DispMatrix()
 
 ErrorPtr DispMatrix::initialize(JsonObjectPtr aInitData)
 {
-  LOG(LOG_NOTICE, "initializing " FEATURE_NAME);
   reset();
   JsonObjectPtr o;
   ErrorPtr err;
@@ -324,7 +323,7 @@ void DispMatrix::initOperation()
     ledChainArrangement->begin(true);
   }
   else {
-    LOG(LOG_WARNING, FEATURE_NAME ": NOP: no ledchain connected");
+    OLOG(LOG_WARNING, "NOP: no ledchain connected");
   }
   setInitialized();
 }

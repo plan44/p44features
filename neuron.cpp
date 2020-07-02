@@ -124,7 +124,7 @@ ErrorPtr Neuron::fire(ApiRequestPtr aRequest)
 
 ErrorPtr Neuron::glow(ApiRequestPtr aRequest)
 {
-  LOG(LOG_INFO, "neuron glow");
+  OLOG(LOG_INFO, "glow");
   if(axonState != AxonIdle || bodyState != BodyIdle) return Error::ok();
   phi = 0;
   bodyState = BodyGlowing;
@@ -148,7 +148,6 @@ ErrorPtr Neuron::mute(ApiRequestPtr aRequest)
 
 void Neuron::initOperation()
 {
-  LOG(LOG_NOTICE, "initializing neuron");
   ledChain1 = LEDChainCommPtr(new LEDChainComm(LEDChainComm::ledtype_ws281x, ledChain1Name, 100));
   ledChain2 = LEDChainCommPtr(new LEDChainComm(LEDChainComm::ledtype_ws281x, ledChain2Name, 100));
   ledChain1->begin();
@@ -170,7 +169,7 @@ void Neuron::start(double aMovingAverageCount, double aThreshold,int aNumAxonLed
 
 void Neuron::fire(double aValue)
 {
-  LOG(LOG_INFO, "neuron fires with avg=%f", aValue);
+  OLOG(LOG_INFO, "fires with avg=%f", aValue);
   if(axonState == AxonFiring) return;
   neuronSpike(aValue);
   pos = 0;

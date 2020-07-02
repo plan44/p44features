@@ -92,7 +92,6 @@ Splitflaps::~Splitflaps()
 
 ErrorPtr Splitflaps::initialize(JsonObjectPtr aInitData)
 {
-  LOG(LOG_NOTICE, "initializing " FEATURE_NAME);
   reset();
   // { "cmd":"init", "splitflaps": { "modules":[ { "name":"name", "addr":xx, "type":"alphanum"|"hour"|"minute"|"40"|"62" } ] } }
   ErrorPtr err;
@@ -246,7 +245,7 @@ void Splitflaps::initOperation()
     sbbSerial.serialComm->setRTS(false); // not sending
   }
   else {
-    LOG(LOG_WARNING, FEATURE_NAME ": Could not open serial connection");
+    OLOG(LOG_WARNING, "Could not open serial connection");
   }
   setInitialized();
 }
@@ -294,7 +293,7 @@ size_t Splitflaps::sbbTransmitter(size_t aNumBytes, const uint8_t *aBytes)
       for (size_t i=0; i<aNumBytes; i++) {
         string_format_append(m, " %02X", aBytes[i]);
       }
-      LOG(LOG_NOTICE, "transmitting bytes:%s", m.c_str());
+      OLOG(LOG_NOTICE, "transmitting bytes:%s", m.c_str());
     }
     // enable sending
     enableSending(true);
@@ -306,7 +305,7 @@ size_t Splitflaps::sbbTransmitter(size_t aNumBytes, const uint8_t *aBytes)
     enableSending(false);
   }
   else {
-    LOG(LOG_DEBUG, "Splitflaps::sbbTransmitter error - connection could not be established!");
+    OLOG(LOG_DEBUG, "sbbTransmitter error - connection could not be established!");
   }
   return res;
 }
@@ -314,7 +313,7 @@ size_t Splitflaps::sbbTransmitter(size_t aNumBytes, const uint8_t *aBytes)
 
 void Splitflaps::sendRawCommand(const string aCommand, size_t aExpectedBytes, SBBResultCB aResultCB, MLMicroSeconds aInitiationDelay)
 {
-  LOG(LOG_INFO, "Posting command (size=%zu)", aCommand.size());
+  OLOG(LOG_INFO, "Posting command (size=%zu)", aCommand.size());
   SerialOperationSendPtr req = SerialOperationSendPtr(new SerialOperationSend);
   req->setDataSize(aCommand.size());
   req->appendData(aCommand.size(), (uint8_t *)aCommand.c_str());
@@ -338,7 +337,7 @@ void Splitflaps::sendRawCommand(const string aCommand, size_t aExpectedBytes, SB
 
 void Splitflaps::sbbCommandComplete(SBBResultCB aResultCB, SerialOperationPtr aSerialOperation, ErrorPtr aError)
 {
-  LOG(LOG_INFO, "Command complete");
+  OLOG(LOG_INFO, "Command complete");
   string result;
   if (Error::isOK(aError)) {
     SerialOperationReceivePtr resp = boost::dynamic_pointer_cast<SerialOperationReceive>(aSerialOperation);
@@ -412,7 +411,7 @@ ssize_t Splitflaps::acceptExtraBytes(size_t aNumBytes, const uint8_t *aBytes)
     for (size_t i=0; i<aNumBytes; i++) {
       string_format_append(m, " %02X", aBytes[i]);
     }
-    LOG(LOG_NOTICE, "received extra bytes:%s", m.c_str());
+    OLOG(LOG_NOTICE, "received extra bytes:%s", m.c_str());
   }
   return (ssize_t)aNumBytes;
 }
