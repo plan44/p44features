@@ -569,9 +569,9 @@ ErrorPtr FeatureApiError::err(const char *aFmt, ...)
 
 bool FeatureApi::evaluateAsyncFeatureFunctions(EvaluationContext* aEvalContext, const string &aFunc, const FunctionArguments &aArgs, bool &aNotYielded)
 {
-  if (aFunc=="call") {
-    // call(feature_api_json [, concurrent])
-    if (aArgs.size()<1 || aArgs.size()>2) return false; // not enough params
+  if (aFunc=="call" && aArgs.size()>=1 && aArgs.size()<=2) {
+    // call a command or property change on the feature API
+    //   call(feature_api_json [, concurrent])
     if (aArgs[0].notValue()) return aEvalContext->errorInArg(aArgs[0], true);
     bool concurrent = aArgs[1].boolValue();
     ExpressionValue res;
@@ -596,6 +596,20 @@ bool FeatureApi::evaluateAsyncFeatureFunctions(EvaluationContext* aEvalContext, 
     FeatureApi::sharedApi()->handleRequest(request);
     aNotYielded = false; // callback will get result
     return true;
+  }
+  else if (aFunc=="message") {
+    // Issue a API message (not interpreted except possibly by a message handler script
+    //   message(feature_api_json)
+    if (aArgs[0].notValue()) return aEvalContext->errorInArg(aArgs[0], true);
+    JsonObjectPtr msg;
+    ErrorPtr err;
+    #if EXPRESSION_JSON_SUPPORT
+    msg = aArgs[0].jsonValue(&err);
+    #else
+    msg = JsonObject::objFromText(aArgs[0].stringValue().c_str(), -1, &err, false);
+    #endif
+    if (Error::notOK(err)) return aEvalContext->throwError(err);
+    sharedApi()->sendMessage(msg);
   }
   return false;
 }
