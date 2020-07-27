@@ -26,10 +26,8 @@
 
 #include "jsoncomm.hpp"
 
-#if ENABLE_EXPRESSIONS
-  #include "expressions.hpp"
-#endif
-
+#include "expressions.hpp"
+#include "p44script.hpp"
 
 
 namespace p44 {

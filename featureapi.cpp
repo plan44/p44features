@@ -111,8 +111,10 @@ FeatureApiPtr FeatureApi::sharedApi()
 }
 
 
-FeatureApi::FeatureApi() :
-  trigger(NULL) // FIXME: add geolocation here
+FeatureApi::FeatureApi()
+  #if EXPRESSION_SCRIPT_SUPPORT
+  : trigger(NULL) // FIXME: add geolocation here
+  #endif
 {
 }
 
@@ -424,6 +426,7 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
 }
 
 
+#if EXPRESSION_SCRIPT_SUPPORT
 void FeatureApi::triggerEvaluationExecuted(ExpressionValue aEvaluationResult)
 {
   if (aEvaluationResult.boolValue()) {
@@ -432,7 +435,7 @@ void FeatureApi::triggerEvaluationExecuted(ExpressionValue aEvaluationResult)
     sendMessage(message);
   }
 }
-
+#endif
 
 
 ErrorPtr FeatureApi::reset(ApiRequestPtr aRequest)
