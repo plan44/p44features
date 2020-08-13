@@ -161,9 +161,14 @@ namespace p44 {
   #endif // EXPRESSION_SCRIPT_SUPPORT
 
 
-
+  #if ENABLE_P44SCRIPT
+  using namespace P44Script;
+  #endif
 
   class FeatureApi : public P44LoggingObj
+    #if ENABLE_P44SCRIPT
+    , public EventSource
+    #endif
   {
     friend class FeatureApiRequest;
 
@@ -176,6 +181,12 @@ namespace p44 {
     string devicelabel;
 
     MLTicket scriptTicket;
+
+    #if ENABLE_P44SCRIPT
+    ApiRequestPtr mPendingRequest; ///< latest incoming API request pending for processing via script (because it could not be processed internally)
+    JsonObjectPtr mPendingEvent; ///< latest outgoing feature API event message
+    #endif // ENABLE_P44SCRIPT
+
 
     #if EXPRESSION_SCRIPT_SUPPORT
     string eventScript;
@@ -251,7 +262,7 @@ namespace p44 {
     void start(const string aApiPort);
 
     /// send (event) message to API
-    void sendMessage(JsonObjectPtr aMessage);
+    void sendEventMessage(JsonObjectPtr aEventMessage);
 
     #if EXPRESSION_SCRIPT_SUPPORT
 
@@ -270,11 +281,18 @@ namespace p44 {
 
     #endif // EXPRESSION_SCRIPT_SUPPORT
 
+    #if ENABLE_P44SCRIPT
+    JsonObjectPtr pendingEvent(); ///< read (and clear) currently pending event message
+    #endif // ENABLE_P44SCRIPT
+
+
+    ErrorPtr processRequest(ApiRequestPtr aRequest);
+    void sendEventMessageInternal(JsonObjectPtr aEventMessage);
+
   private:
 
     SocketCommPtr apiConnectionHandler(SocketCommPtr aServerSocketComm);
     void apiRequestHandler(JsonCommPtr aConnection, ErrorPtr aError, JsonObjectPtr aRequest);
-    ErrorPtr processRequest(ApiRequestPtr aRequest);
 
     /// send response via main API connection.
     /// @note: only for FeatureApiRequest
@@ -311,6 +329,39 @@ namespace p44 {
     /// factory method to create string error fprint style
     static ErrorPtr err(const char *aFmt, ...) __printflike(1,2);
   };
+
+
+  #if ENABLE_P44SCRIPT
+  namespace P44Script {
+
+    class FeatureEventObj : public JsonValue
+    {
+      typedef JsonValue inherited;
+
+    public:
+      FeatureEventObj(JsonObjectPtr aJson);
+      virtual string getAnnotation() const P44_OVERRIDE;
+
+      /// @return a souce of events for this object
+      virtual EventSource *eventSource() const P44_OVERRIDE;
+    };
+
+    /// represents the global objects related to p44features
+    class FeatureApiLookup : public BuiltInMemberLookup
+    {
+      typedef BuiltInMemberLookup inherited;
+    public:
+      FeatureApiLookup();
+
+      /// static helper for implementing calls
+      static void featureCallDone(BuiltinFunctionContextPtr f, JsonObjectPtr aResult, ErrorPtr aError);
+
+    };
+
+  } // namespace P44Script
+  #endif // ENABLE_P44SCRIPT
+
+
 
 } // namespace p44
 

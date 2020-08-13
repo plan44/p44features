@@ -78,8 +78,24 @@ namespace p44 {
   };
   typedef boost::intrusive_ptr<Feature> FeaturePtr;
 
+
+  #if ENABLE_P44SCRIPT
+  namespace P44Script {
+
+    /// represents a single "feature"
+    class FeatureObj : public StructuredLookupObject
+    {
+      typedef StructuredLookupObject inherited;
+      FeaturePtr mFeature;
+    public:
+      FeatureObj(FeaturePtr aFeature);
+      virtual string getAnnotation() const P44_OVERRIDE { return "feature"; };
+      FeaturePtr feature() { return mFeature; }
+    };
+
+  } // namespace P44Script
+  #endif // ENABLE_P44SCRIPT
+
 } // namespace p44
-
-
 
 #endif /* __p44features_feature_hpp__ */

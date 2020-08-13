@@ -74,7 +74,7 @@ void Feature::sendEventMessage(JsonObjectPtr aMessage)
 {
   if (!aMessage) aMessage = JsonObject::newObj();
   aMessage->add("feature", JsonObject::newString(getName()));
-  FeatureApi::sharedApi()->sendMessage(aMessage);
+  FeatureApi::sharedApi()->sendEventMessage(aMessage);
 }
 
 
@@ -89,3 +89,109 @@ ErrorPtr Feature::runTool()
 {
   return TextError::err("Feature %s does not have command line tools", name.c_str());
 }
+
+
+// MARK: - Feature scripting object
+
+#if ENABLE_P44SCRIPT
+
+using namespace P44Script;
+
+// status()
+static void status_func(BuiltinFunctionContextPtr f)
+{
+  FeatureObj* ft = dynamic_cast<FeatureObj*>(f->thisObj().get());
+  assert(ft);
+  f->finish(new JsonValue(ft->feature()->status()));
+}
+
+// init(json_config)
+static const BuiltInArgDesc init_args[] = { { json+object } };
+static const size_t init_numargs = sizeof(init_args)/sizeof(BuiltInArgDesc);
+static void init_func(BuiltinFunctionContextPtr f)
+{
+  FeatureObj* ft = dynamic_cast<FeatureObj*>(f->thisObj().get());
+  assert(ft);
+  ErrorPtr err = ft->feature()->initialize(f->arg(0)->jsonValue());
+  if (Error::notOK(err)) {
+    f->finish(new ErrorValue(err));
+    return;
+  }
+  f->finish();
+}
+
+static void featureCallDone(BuiltinFunctionContextPtr f, JsonObjectPtr aResult, ErrorPtr aError)
+{
+  if (aError) {
+    f->finish(new ErrorValue(aError));
+    return;
+  }
+  if (aResult) {
+    f->finish(new JsonValue(aResult));
+    return;
+  }
+  f->finish(new AnnotatedNullValue("feature cmd without answer"));
+}
+
+static void issueCommand(BuiltinFunctionContextPtr f, JsonObjectPtr aCommand)
+{
+  FeatureObj* ft = dynamic_cast<FeatureObj*>(f->thisObj().get());
+  assert(ft);
+  ApiRequestPtr request = ApiRequestPtr(new APICallbackRequest(aCommand, boost::bind(&featureCallDone, f, _1, _2)));
+  ErrorPtr err = ft->feature()->processRequest(request);
+  if (err) {
+    // must "send" a response now (will trigger featureCallDone)
+    request->sendResponse(NULL, err);
+  }
+}
+
+// cmd(command [, jsonparams])
+static const BuiltInArgDesc cmd_args[] = { { text }, { json+object+optional } };
+static const size_t cmd_numargs = sizeof(cmd_args)/sizeof(BuiltInArgDesc);
+static void cmd_func(BuiltinFunctionContextPtr f)
+{
+  JsonObjectPtr jcmd;
+  if (f->numArgs()>1) {
+    jcmd = f->arg(1)->jsonValue();
+  }
+  if (!jcmd || !jcmd->isType(json_type_object)) {
+    jcmd = JsonObject::newObj();
+  }
+  jcmd->add("cmd", JsonObject::newString(f->arg(0)->stringValue()));
+  issueCommand(f, jcmd);
+}
+
+// set(property, value)
+static const BuiltInArgDesc set_args[] = { { text }, { any } };
+static const size_t set_numargs = sizeof(set_args)/sizeof(BuiltInArgDesc);
+static void set_func(BuiltinFunctionContextPtr f)
+{
+  JsonObjectPtr jcmd = JsonObject::newObj();
+  jcmd->add(f->arg(0)->stringValue().c_str(), f->arg(1)->jsonValue());
+  issueCommand(f, jcmd);
+}
+
+
+static const BuiltinMemberDescriptor featureMembers[] = {
+  { "status", json, 0, NULL, &status_func },
+  { "init", null+error, init_numargs, init_args, &init_func },
+  { "cmd", any+error, cmd_numargs, cmd_args, &cmd_func },
+  { "set", any+error, set_numargs, set_args, &set_func },
+  { NULL } // terminator
+};
+
+
+static BuiltInMemberLookup* sharedFeatureMemberLookupP = NULL;
+
+FeatureObj::FeatureObj(FeaturePtr aFeature) :
+  mFeature(aFeature)
+{
+  if (sharedFeatureMemberLookupP==NULL) {
+    sharedFeatureMemberLookupP = new BuiltInMemberLookup(featureMembers);
+    sharedFeatureMemberLookupP->isMemberVariable(); // disable refcounting
+  }
+  registerMemberLookup(sharedFeatureMemberLookupP);
+}
+
+
+#endif // ENABLE_P44SCRIPT

@@ -535,24 +535,35 @@ void FeatureApi::start(const string aApiPort)
 }
 
 
-void FeatureApi::sendMessage(JsonObjectPtr aMessage)
+void FeatureApi::sendEventMessage(JsonObjectPtr aEventMessage)
 {
   #if EXPRESSION_SCRIPT_SUPPORT
   if (!eventScript.empty()) {
     // call event script
-    queueScript("API event", eventScript, aMessage);
+    queueScript("API event", eventScript, aEventMessage);
   }
   #endif // EXPRESSION_SCRIPT_SUPPORT
+  #if ENABLE_P44SCRIPT
+  if (numSinks()>0) {
+    mPendingEvent = aEventMessage;
+    sendEvent(new JsonValue(mPendingEvent));
+  }
+  #endif
+  sendEventMessageInternal(aEventMessage);
+}
+
+void FeatureApi::sendEventMessageInternal(JsonObjectPtr aEventMessage)
+{
   if (!connection) {
-    OLOG(LOG_WARNING, "no connection, message cannot be sent: %s", aMessage ? aMessage->json_c_str() : "<none>");
+    OLOG(LOG_WARNING, "no connection, event message cannot be sent: %s", aEventMessage ? aEventMessage->json_c_str() : "<none>");
     return;
   }
-  ErrorPtr err = connection->sendMessage(aMessage);
+  ErrorPtr err = connection->sendMessage(aEventMessage);
   if (Error::notOK(err)) {
     OLOG(LOG_ERR, "Error sending message: %s", err->text());
   }
   else {
-    OLOG(LOG_INFO,"event message: %s", aMessage->c_strValue());
+    OLOG(LOG_INFO,"event message: %s", aEventMessage->c_strValue());
   }
 }
 
@@ -569,6 +580,115 @@ ErrorPtr FeatureApiError::err(const char *aFmt, ...)
 
 
 // MARK: - script support
+
+#if ENABLE_P44SCRIPT
+
+using namespace P44Script;
+
+
+JsonObjectPtr FeatureApi::pendingEvent()
+{
+  JsonObjectPtr res = mPendingEvent;
+  mPendingEvent.reset();
+  return res;
+}
+
+
+FeatureEventObj::FeatureEventObj(JsonObjectPtr aJson) :
+  inherited(aJson)
+{
+}
+
+
+string FeatureEventObj::getAnnotation() const
+{
+  return "";
+}
+
+
+EventSource *FeatureEventObj::eventSource() const
+{
+  // the API is the event source
+  return dynamic_cast<EventSource *>(FeatureApi::sharedApi().get());
+}
+
+
+// featureevent(json)    send a feature event
+// featureevent()        return latest unprocessed feature event
+static const BuiltInArgDesc featureevent_args[] = { { json+exacttype+optional } };
+static const size_t featureevent_numargs = sizeof(featureevent_args)/sizeof(BuiltInArgDesc);
+static void featureevent_func(BuiltinFunctionContextPtr f)
+{
+  if (f->numArgs()==0) {
+    // return latest unprocessed API event
+    f->finish(new FeatureEventObj(FeatureApi::sharedApi()->pendingEvent()));
+    return;
+  }
+  // send a feature API event message (to API client)
+  JsonObjectPtr jevent = f->arg(0)->jsonValue();
+  FeatureApi::sharedApi()->sendEventMessageInternal(jevent); // without triggering featureevent()
+  f->finish();
+}
+
+
+// featurecall(json)      send a feature api call/request (for local processing)
+static const BuiltInArgDesc featurecall_args[] = { { json+exacttype } };
+static const size_t featurecall_numargs = sizeof(featurecall_args)/sizeof(BuiltInArgDesc);
+static void featurecall_func(BuiltinFunctionContextPtr f)
+{
+  JsonObjectPtr jreq = f->arg(0)->jsonValue();
+  ApiRequestPtr request = ApiRequestPtr(new APICallbackRequest(jreq, boost::bind(&FeatureApiLookup::featureCallDone, f, _1, _2)));
+  ErrorPtr err = FeatureApi::sharedApi()->processRequest(request);
+  if (err) {
+    // must "send" a response now (will trigger featureCallDone)
+    request->sendResponse(NULL, err);
+  }
+}
+
+
+// feature(featurename)
+static const BuiltInArgDesc feature_args[] = { { text } };
+static const size_t feature_numargs = sizeof(feature_args)/sizeof(BuiltInArgDesc);
+static void feature_func(BuiltinFunctionContextPtr f)
+{
+  FeaturePtr feature = FeatureApi::sharedApi()->getFeature(f->arg(0)->stringValue());
+  if (!feature) {
+    f->finish(new ErrorValue(ScriptError::NotFound, "no feature '%s' found", f->arg(0)->stringValue().c_str()));
+    return;
+  }
+  f->finish(new FeatureObj(feature));
+}
+
+
+static const BuiltinMemberDescriptor featureApiGlobals[] = {
+  { "feature", any, feature_numargs, feature_args, &feature_func },
+  { "featurecall", any, featurecall_numargs, featurecall_args, &featurecall_func },
+  { "featureevent", json+null, featureevent_numargs, featureevent_args, &featureevent_func },
+  { NULL } // terminator
+};
+
+FeatureApiLookup::FeatureApiLookup() :
+  inherited(featureApiGlobals)
+{
+}
+
+// static helper for implementing calls
+void FeatureApiLookup::featureCallDone(BuiltinFunctionContextPtr f, JsonObjectPtr aResult, ErrorPtr aError)
+{
+  if (aError) {
+    f->finish(new ErrorValue(aError));
+    return;
+  }
+  if (aResult) {
+    f->finish(new JsonValue(aResult));
+    return;
+  }
+  f->finish(new AnnotatedNullValue("feature api request returns no answer"));
+}
+
+#endif // ENABLE_P44SCRIPT
+
+
 
 #if EXPRESSION_SCRIPT_SUPPORT
 
