@@ -106,7 +106,7 @@ static void status_func(BuiltinFunctionContextPtr f)
 }
 
 // init(json_config)
-static const BuiltInArgDesc init_args[] = { { json+object } };
+static const BuiltInArgDesc init_args[] = { { json|object } };
 static const size_t init_numargs = sizeof(init_args)/sizeof(BuiltInArgDesc);
 static void init_func(BuiltinFunctionContextPtr f)
 {
@@ -146,7 +146,7 @@ static void issueCommand(BuiltinFunctionContextPtr f, JsonObjectPtr aCommand)
 }
 
 // cmd(command [, jsonparams])
-static const BuiltInArgDesc cmd_args[] = { { text }, { json+object+optional } };
+static const BuiltInArgDesc cmd_args[] = { { text }, { json|object|optional } };
 static const size_t cmd_numargs = sizeof(cmd_args)/sizeof(BuiltInArgDesc);
 static void cmd_func(BuiltinFunctionContextPtr f)
 {
@@ -173,10 +173,10 @@ static void set_func(BuiltinFunctionContextPtr f)
 
 
 static const BuiltinMemberDescriptor featureMembers[] = {
-  { "status", json, 0, NULL, &status_func },
-  { "init", null+error, init_numargs, init_args, &init_func },
-  { "cmd", any+error, cmd_numargs, cmd_args, &cmd_func },
-  { "set", any+error, set_numargs, set_args, &set_func },
+  { "status", executable|json, 0, NULL, &status_func },
+  { "init", executable|null|error, init_numargs, init_args, &init_func },
+  { "cmd", executable|any|error, cmd_numargs, cmd_args, &cmd_func },
+  { "set", executable|any|error, set_numargs, set_args, &set_func },
   { NULL } // terminator
 };
 
