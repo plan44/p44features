@@ -56,7 +56,7 @@ Inputs::~Inputs()
 
 ErrorPtr Inputs::initialize(JsonObjectPtr aInitData)
 {
-  // { "cmd":"init", "inputs": { "*input_name*":{ "pin":"*pin_spec*", "initiallyo":*initial_bool* } , ... } }
+  // { "cmd":"init", "inputs": { "*input_name*":{ "pin":"*pin_spec*", "initially":*initial_bool* } , ... } }
   aInitData->resetKeyIteration();
   string inputName;
   JsonObjectPtr inputCfg;

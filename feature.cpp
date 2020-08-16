@@ -175,8 +175,8 @@ static void set_func(BuiltinFunctionContextPtr f)
 static const BuiltinMemberDescriptor featureMembers[] = {
   { "status", executable|json, 0, NULL, &status_func },
   { "init", executable|null|error, init_numargs, init_args, &init_func },
-  { "cmd", executable|any|error, cmd_numargs, cmd_args, &cmd_func },
-  { "set", executable|any|error, set_numargs, set_args, &set_func },
+  { "cmd", executable|async|any|error, cmd_numargs, cmd_args, &cmd_func },
+  { "set", executable|async|any|error, set_numargs, set_args, &set_func },
   { NULL } // terminator
 };
 

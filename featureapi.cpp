@@ -602,7 +602,7 @@ FeatureEventObj::FeatureEventObj(JsonObjectPtr aJson) :
 
 string FeatureEventObj::getAnnotation() const
 {
-  return "";
+  return "feature event";
 }
 
 
@@ -662,7 +662,7 @@ static void feature_func(BuiltinFunctionContextPtr f)
 
 static const BuiltinMemberDescriptor featureApiGlobals[] = {
   { "feature", executable|any, feature_numargs, feature_args, &feature_func },
-  { "featurecall", executable|any, featurecall_numargs, featurecall_args, &featurecall_func },
+  { "featurecall", executable|async|any, featurecall_numargs, featurecall_args, &featurecall_func },
   { "featureevent", executable|json|null, featureevent_numargs, featureevent_args, &featureevent_func },
   { NULL } // terminator
 };
