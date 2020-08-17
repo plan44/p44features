@@ -41,11 +41,12 @@ ErrorPtr Feature::processRequest(ApiRequestPtr aRequest)
   // check status command
   JsonObjectPtr reqData = aRequest->getRequest();
   JsonObjectPtr o;
+  ErrorPtr err;
   if (reqData->get("cmd", o, true)) {
     string cmd = o->stringValue();
     if (cmd=="status") {
-      aRequest->sendResponse(status(), ErrorPtr());
-      return ErrorPtr();
+      aRequest->sendResponse(status(), err);
+      return err;
     }
     return FeatureApiError::err("Feature '%s': unknown cmd '%s'", getName().c_str(), cmd.c_str());
   }
@@ -53,10 +54,9 @@ ErrorPtr Feature::processRequest(ApiRequestPtr aRequest)
     // decode properties
     if (reqData->get("logleveloffset", o, true)) {
       setLogLevelOffset(o->int32Value());
-      return ErrorPtr();
     }
+    return err ? err : Error::ok();
   }
-  return FeatureApiError::err("Feature '%s': cannot understand request (no cmd)", getName().c_str());
 }
 
 
@@ -124,7 +124,7 @@ static void init_func(BuiltinFunctionContextPtr f)
 
 static void featureCallDone(BuiltinFunctionContextPtr f, JsonObjectPtr aResult, ErrorPtr aError)
 {
-  if (aError) {
+  if (Error::notOK(aError)) {
     f->finish(new ErrorValue(aError));
     return;
   }

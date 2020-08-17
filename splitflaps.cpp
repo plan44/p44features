@@ -200,7 +200,8 @@ ErrorPtr Splitflaps::processRequest(ApiRequestPtr aRequest)
       }
     }
     else if (cmd=="info") {
-
+      // TODO: implement
+      return TextError::err("info not yet implemented");
     }
     return inherited::processRequest(aRequest);
   }

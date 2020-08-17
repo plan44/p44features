@@ -340,6 +340,7 @@ void FeatureApi::handleRequest(ApiRequestPtr aRequest)
   ErrorPtr err = processRequest(aRequest);
   if (err) {
     // something to send (empty response or error)
+    if (err->isOK()) err.reset(); // do not send explicit errors, just empty response
     aRequest->sendResponse(JsonObject::newObj(), err);
   }
 }
@@ -391,6 +392,17 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
       return Error::ok();
     }
     #endif // EXPRESSION_SCRIPT_SUPPORT
+    #if ENABLE_P44SCRIPT
+    if (reqData->get("run", o, true)) {
+      // directly run a script.
+      // Note: this is not for testing/debugging/REPL purposes, but just to fire some script commands
+      //   Basic p44script edit/debug infrastructure is not implemented as part of the feature API
+      ScriptSource src(sourcecode+regular+keepvars+queue+floatingGlobs, "featurapi_run");
+      src.setSource(o->stringValue());
+      src.run(inherit, boost::bind(&FeatureApi::scriptExecHandler, this, aRequest, _1));
+      return Error::ok();
+    }
+    #endif // ENABLE_P44SCRIPT
     if (!reqData->get("cmd", o, true)) {
       return FeatureApiError::err("missing 'feature' or 'cmd' attribute");
     }
@@ -546,7 +558,7 @@ void FeatureApi::sendEventMessage(JsonObjectPtr aEventMessage)
   #if ENABLE_P44SCRIPT
   if (numSinks()>0) {
     mPendingEvent = aEventMessage;
-    sendEvent(new JsonValue(mPendingEvent));
+    sendEvent(new FeatureEventObj(mPendingEvent)); // needs to have one-shot marker
   }
   #endif
   sendEventMessageInternal(aEventMessage);
@@ -586,6 +598,20 @@ ErrorPtr FeatureApiError::err(const char *aFmt, ...)
 using namespace P44Script;
 
 
+#if ENABLE_P44SCRIPT
+void FeatureApi::scriptExecHandler(ApiRequestPtr aRequest, ScriptObjPtr aResult)
+{
+  // just returns the exit code of the script as JSON
+  // (this API is not indended for editing/debugging scripts)
+  JsonObjectPtr ans;
+  if (aResult) {
+    ans = aResult->jsonValue();
+  }
+  aRequest->sendResponse(ans, ErrorPtr());
+}
+#endif
+
+
 JsonObjectPtr FeatureApi::pendingEvent()
 {
   JsonObjectPtr res = mPendingEvent;
@@ -597,6 +623,12 @@ JsonObjectPtr FeatureApi::pendingEvent()
 FeatureEventObj::FeatureEventObj(JsonObjectPtr aJson) :
   inherited(aJson)
 {
+}
+
+
+TypeInfo FeatureEventObj::getTypeInfo() const
+{
+  return inherited::getTypeInfo()|oneshot; // returns the event only once
 }
 
 
@@ -615,7 +647,7 @@ EventSource *FeatureEventObj::eventSource() const
 
 // featureevent(json)    send a feature event
 // featureevent()        return latest unprocessed feature event
-static const BuiltInArgDesc featureevent_args[] = { { json|exacttype|optional } };
+static const BuiltInArgDesc featureevent_args[] = { { json|structured|optional } };
 static const size_t featureevent_numargs = sizeof(featureevent_args)/sizeof(BuiltInArgDesc);
 static void featureevent_func(BuiltinFunctionContextPtr f)
 {
@@ -632,7 +664,7 @@ static void featureevent_func(BuiltinFunctionContextPtr f)
 
 
 // featurecall(json)      send a feature api call/request (for local processing)
-static const BuiltInArgDesc featurecall_args[] = { { json|exacttype } };
+static const BuiltInArgDesc featurecall_args[] = { { json|object } };
 static const size_t featurecall_numargs = sizeof(featurecall_args)/sizeof(BuiltInArgDesc);
 static void featurecall_func(BuiltinFunctionContextPtr f)
 {

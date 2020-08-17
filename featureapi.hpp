@@ -283,6 +283,7 @@ namespace p44 {
 
     #if ENABLE_P44SCRIPT
     JsonObjectPtr pendingEvent(); ///< read (and clear) currently pending event message
+    void scriptExecHandler(ApiRequestPtr aRequest, ScriptObjPtr aResult);
     #endif // ENABLE_P44SCRIPT
 
 
@@ -341,6 +342,7 @@ namespace p44 {
     public:
       FeatureEventObj(JsonObjectPtr aJson);
       virtual string getAnnotation() const P44_OVERRIDE;
+      virtual TypeInfo getTypeInfo() const P44_OVERRIDE;
 
       /// @return a souce of events for this object
       virtual EventSource *eventSource() const P44_OVERRIDE;

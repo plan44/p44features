@@ -214,7 +214,7 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
         if (viewConfig) {
           P44ViewPtr view = rootView->getView(viewLabel);
           if (view) err = view->configureFromResourceOrObj(viewConfig, "dispmatrix/");
-          return err;
+          return err ? err : Error::ok();
         }
       }
       return TextError::err("missing 'view' and/or 'config'");
@@ -241,8 +241,8 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
         }
         // get new contents view hierarchy
         err = p44::createViewFromConfig(o, sceneView, dispScroller);
-        if (!Error::isOK(err))
-          return err;
+        if (Error::notOK(err))
+          return err; // abort early, other properties most likely need the scene in place
         dispScroller->setScrolledView(sceneView);
       }
     }
