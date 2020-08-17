@@ -65,7 +65,9 @@ JsonObjectPtr Feature::status()
   if (isInitialized()) {
     JsonObjectPtr status = JsonObject::newObj();
     status->add("logleveloffset", JsonObject::newInt32(getLogLevelOffset()));
+    return status;
   }
+  // not initialized
   return JsonObject::newBool(false);
 }
 
