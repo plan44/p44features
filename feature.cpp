@@ -148,7 +148,7 @@ static void issueCommand(BuiltinFunctionContextPtr f, JsonObjectPtr aCommand)
 }
 
 // cmd(command [, jsonparams])
-static const BuiltInArgDesc cmd_args[] = { { text }, { json|object|optional } };
+static const BuiltInArgDesc cmd_args[] = { { text }, { json|object|optionalarg } };
 static const size_t cmd_numargs = sizeof(cmd_args)/sizeof(BuiltInArgDesc);
 static void cmd_func(BuiltinFunctionContextPtr f)
 {

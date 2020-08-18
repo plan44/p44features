@@ -647,7 +647,7 @@ EventSource *FeatureEventObj::eventSource() const
 
 // featureevent(json)    send a feature event
 // featureevent()        return latest unprocessed feature event
-static const BuiltInArgDesc featureevent_args[] = { { json|structured|optional } };
+static const BuiltInArgDesc featureevent_args[] = { { json|structured|optionalarg } };
 static const size_t featureevent_numargs = sizeof(featureevent_args)/sizeof(BuiltInArgDesc);
 static void featureevent_func(BuiltinFunctionContextPtr f)
 {
