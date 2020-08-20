@@ -688,7 +688,7 @@ static void feature_func(BuiltinFunctionContextPtr f)
     f->finish(new ErrorValue(ScriptError::NotFound, "no feature '%s' found", f->arg(0)->stringValue().c_str()));
     return;
   }
-  f->finish(new FeatureObj(feature));
+  f->finish(feature->newFeatureObj());
 }
 
 

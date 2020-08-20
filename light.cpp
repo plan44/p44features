@@ -120,4 +120,57 @@ double Light::brightnessToPWM(double aBrightness)
   return 100*((exp(aBrightness*4/1)-1)/(exp(4)-1));
 }
 
+#if ENABLE_P44SCRIPT
+
+using namespace P44Script;
+
+// animator()
+static void animator_func(BuiltinFunctionContextPtr f)
+{
+  LightObj* l = dynamic_cast<LightObj*>(f->thisObj().get());
+  assert(l);
+  f->finish(new ValueAnimatorObj(l->animator()));
+}
+
+
+
+static const BuiltinMemberDescriptor lightMembers[] = {
+  { "animator", executable|object, 0, NULL, &animator_func },
+  { NULL } // terminator
+};
+
+
+static BuiltInMemberLookup* sharedLightMemberLookupP = NULL;
+
+ScriptObjPtr Light::newFeatureObj()
+{
+  return new LightObj(this);
+}
+
+
+ValueAnimatorPtr LightObj::animator()
+{
+  Light* l = dynamic_cast<Light*>(mFeature.get());
+  ValueAnimatorPtr a;
+  if (l) {
+    double startValue;
+    a = ValueAnimatorPtr(new ValueAnimator(l->pwmDimmer->getValueSetter(startValue)));
+    a->from(startValue);
+  }
+  return a;
+}
+
+
+LightObj::LightObj(FeaturePtr aFeature) :
+  inherited(aFeature)
+{
+  if (sharedLightMemberLookupP==NULL) {
+    sharedLightMemberLookupP = new BuiltInMemberLookup(lightMembers);
+    sharedLightMemberLookupP->isMemberVariable(); // disable refcounting
+  }
+  registerMemberLookup(sharedLightMemberLookupP);
+}
+
+#endif // ENABLE_P44SCRIPT
+
 #endif // ENABLE_FEATURE_LIGHT

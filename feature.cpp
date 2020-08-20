@@ -185,6 +185,11 @@ static const BuiltinMemberDescriptor featureMembers[] = {
 
 static BuiltInMemberLookup* sharedFeatureMemberLookupP = NULL;
 
+ScriptObjPtr Feature::newFeatureObj()
+{
+  return new FeatureObj(this);
+}
+
 FeatureObj::FeatureObj(FeaturePtr aFeature) :
   mFeature(aFeature)
 {

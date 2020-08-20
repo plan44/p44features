@@ -33,9 +33,25 @@
 
 namespace p44 {
 
+  #if ENABLE_P44SCRIPT
+  namespace P44Script {
+
+    /// represents a single "feature"
+    class LightObj : public FeatureObj
+    {
+      typedef FeatureObj inherited;
+    public:
+      LightObj(FeaturePtr aFeature);
+      ValueAnimatorPtr animator();
+    };
+
+  } // namespace P44Script
+  #endif // ENABLE_P44SCRIPT
+
   class Light : public Feature
   {
     typedef Feature inherited;
+    friend class LightObj;
 
     AnalogIoPtr pwmDimmer;
     ValueAnimatorPtr animator;
@@ -67,6 +83,11 @@ namespace p44 {
 
     /// @return status information object for initialized feature, bool false for uninitialized
     virtual JsonObjectPtr status() override;
+
+    #if ENABLE_P44SCRIPT
+    /// @return a new script object representing this feature. Derived device classes might return different types of device object.
+    virtual ScriptObjPtr newFeatureObj() override;
+    #endif
 
   private:
 

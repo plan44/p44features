@@ -26,6 +26,9 @@
 
 namespace p44 {
 
+  class Feature;
+  typedef boost::intrusive_ptr<Feature> FeaturePtr;
+
   class Feature : public P44LoggingObj
   {
 
@@ -66,6 +69,11 @@ namespace p44 {
     /// @return error if tool fails, ok otherwise
     virtual ErrorPtr runTool();
 
+    #if ENABLE_P44SCRIPT
+    /// @return a new script object representing this feature. Derived device classes might return different types of device object.
+    virtual ScriptObjPtr newFeatureObj();
+    #endif
+
   protected:
 
     void setInitialized() { initialized = true; }
@@ -76,7 +84,6 @@ namespace p44 {
     void sendEventMessage(JsonObjectPtr aMessage);
 
   };
-  typedef boost::intrusive_ptr<Feature> FeaturePtr;
 
 
   #if ENABLE_P44SCRIPT
@@ -86,6 +93,7 @@ namespace p44 {
     class FeatureObj : public StructuredLookupObject
     {
       typedef StructuredLookupObject inherited;
+    protected:
       FeaturePtr mFeature;
     public:
       FeatureObj(FeaturePtr aFeature);
