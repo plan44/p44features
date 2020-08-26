@@ -172,7 +172,7 @@ ErrorPtr Splitflaps::processRequest(ApiRequestPtr aRequest)
     else if (cmd=="position") {
       // set or read module position
       // { "cmd":"position", "name":name [, "value":value] }
-      if (!data->get("name", o)) {
+      if (!data->get("name", o, true)) {
         return TextError::err("missing module name");
       }
       else {
