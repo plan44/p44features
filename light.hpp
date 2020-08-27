@@ -40,6 +40,7 @@ namespace p44 {
     class LightObj : public FeatureObj
     {
       typedef FeatureObj inherited;
+      friend class Light;
     public:
       LightObj(FeaturePtr aFeature);
       ValueAnimatorPtr animator();
@@ -51,7 +52,7 @@ namespace p44 {
   class Light : public Feature
   {
     typedef Feature inherited;
-    friend class LightObj;
+    friend class P44Script::LightObj;
 
     AnalogIoPtr pwmDimmer;
     ValueAnimatorPtr animator;
