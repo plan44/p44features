@@ -100,8 +100,8 @@ ErrorPtr DispMatrix::initialize(JsonObjectPtr aInitData)
       installationOffsetY = o->int32Value();
     }
     if (aInitData->get("rootview", o)) {
-      // configure the root view
-      err = rootView->configureFromResourceOrObj(o, FEATURE_NAME "/");
+      // create/replace or reconfigure rootview (depending on having 'type' in the config)
+      err = createViewFromResourceOrObj(o, FEATURE_NAME "/", rootView, P44ViewPtr());
     }
     if (!rootView) {
       // no existing or explicitly initialized rootview: install default scroller as root
