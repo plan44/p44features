@@ -36,6 +36,7 @@ List of currently available features, will expand with each new project:
 - dispmatrix: time synchronized LED matrix displays for large scrolling text display
 - inputs: use any GPIO, or pins of some i2c/spi based I/O extensions, or console keys for simulation, as generic inputs
 - light: simple PWM light dimmer
+- splitflaps: RS485 controlled splitflap display modules (as produced by Omega for Swiss Railways (SBB) and also other railways, such as Deutsche Bahn).
 - neuron: sensor triggered "conductance" light effect
 - mixloop: accelerometer triggered ball movement detector and light effect
 - wifitrack: visualizing WiFi SSIDs revealed to the public in probe requests
@@ -135,7 +136,7 @@ See below for examples
 
 #### Initialisation
 
-{ "cmd":"init", "rfids": { "readers": [*index*, *index*,...], "pollinterval":*pollinterval_seconds*, "sameidtimeout":*re\_reporting\_timeout* "pauseafterdetect":*poll\_pause\_after\_card\_detected*}
+{ "cmd":"init", "rfids": { "readers": [*index*, *index*,...], "pollinterval":*pollinterval_seconds*, "sameidtimeout":*re\_reporting\_timeout* "pauseafterdetect":*poll\_pause\_after\_card\_detected* }
 
 - *index* are the physical bus addresses (0..23 in p44rfidctrl and p44rfidhat hardware) to select the reader. Depending on which readers on which cables are in use, this can be a sequence of numbers with or without gaps.
 - *pollinterval_seconds* is the  polling interval for the connected readers, i.e. how often every reader will be checked for the presence of a new RFID tag (default: 0.1 seconds)
@@ -150,6 +151,27 @@ See below for examples
 
 - *rfid_nUID* is the nUID of the RFID tag seen
 - *rfid\_reader\_index* is the physical bus address of the reader which has seen the RFID tag
+
+
+### Splitflaps
+
+#### Initialisation
+
+{ "cmd":"init", "splitflaps": { "modules":[
+    {"name":"*module_name*","addr":*module_address*,"type":"*hour|minute|40|62*"},
+    ...
+] }}
+
+- The "modules" array defines the splitflaps to be used.
+- *name* is a handle for the module to access it with the *position* command later (see below).
+- *module_address* is the module address of the splitflap module (for SBB modules, usually written onto a yellow sticker on the module itself, but as the address can be reprogrammed the sticker might not be correct in all cases).
+- the "type" field specifies the module kind. *hour* and *minute* are basically the same as *40* and *62*, however the flap indices are made to match the actual numerical display (the flaps are not in strict ascending order in those modules). *40* and *62* are for generic modules with 40 and 62 flaps, resp. 
+
+#### Set splitflap positions
+
+{ "feature":"splitflaps", "cmd":"position", "name":"*module_name*", "value":*flap_number* }
+
+Sets the module that was named *module_name* at initialisation (see above) to position *flap_number*, starting at 0 for the first flap (in *42* und *60* type modules, and with hour 0/minute 00 for *hour* and *minute* type modules.
 
 
 ### Generic Inputs
