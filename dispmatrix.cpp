@@ -107,7 +107,6 @@ ErrorPtr DispMatrix::initialize(JsonObjectPtr aInitData)
       // no existing or explicitly initialized rootview: install default scroller as root
       PixelRect r = ledChainArrangement->totalCover();
       dispScroller = ViewScrollerPtr(new ViewScroller);
-      dispScroller->setLabel("DISPSCROLLER");
       dispScroller->setFrame(r);
       dispScroller->setFullFrameContent();
       dispScroller->setBackgroundColor(black); // stack with black background is more efficient (and there's nothing below, anyway)
@@ -116,6 +115,7 @@ ErrorPtr DispMatrix::initialize(JsonObjectPtr aInitData)
       // the scroller is the root view
       rootView = dispScroller;
     }
+    rootView->setDefaultLabel("DISPSCROLLER");
     if (Error::isOK(err)) {
       // install root view
       ledChainArrangement->setRootView(rootView);
@@ -308,7 +308,13 @@ JsonObjectPtr DispMatrix::status()
         answer->add("text", JsonObject::newString(text->getText()));
         answer->add("spacing", JsonObject::newInt32(text->getTextSpacing()));
       }
+      #if ENABLE_VIEWSTATUS
+      answer->add("scrollview", dispScroller->viewStatus());
+      #endif
     }
+    #if ENABLE_VIEWSTATUS
+    answer->add("rootview", rootView->viewStatus());
+    #endif
   }
   return answer;
 }

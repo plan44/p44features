@@ -73,7 +73,6 @@ ErrorPtr Indicators::initialize(JsonObjectPtr aInitData)
       // no existing or explicitly initialized rootview: install default viewstack as root
       PixelRect r = ledChainArrangement->totalCover();
       indicatorsView = ViewStackPtr(new ViewStack);
-      indicatorsView->setLabel("INDICATORS");
       indicatorsView->setFrame(r);
       indicatorsView->setFullFrameContent();
       indicatorsView->setBackgroundColor(black);
@@ -81,6 +80,7 @@ ErrorPtr Indicators::initialize(JsonObjectPtr aInitData)
       // the stack is also the root view
       rootView = indicatorsView;
     }
+    rootView->setDefaultLabel("INDICATORS");
     if (Error::isOK(err)) {
       // install root view
       ledChainArrangement->setRootView(rootView);
