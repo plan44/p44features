@@ -179,8 +179,8 @@ JsonObjectPtr MixLoop::status()
 
 void MixLoop::initOperation()
 {
-  ledChain1 = LEDChainCommPtr(new LEDChainComm(LEDChainComm::ledtype_ws281x, ledChain1Name, 100));
-  ledChain2 = LEDChainCommPtr(new LEDChainComm(LEDChainComm::ledtype_ws281x, ledChain2Name, 100));
+  ledChain1 = LEDChainCommPtr(new LEDChainComm("WS2813.GRB", ledChain1Name, 100));
+  ledChain2 = LEDChainCommPtr(new LEDChainComm("WS2813.GRB", ledChain2Name, 100));
   ledChain1->begin();
   ledChain1->show();
   ledChain2->begin();

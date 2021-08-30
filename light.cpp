@@ -107,7 +107,7 @@ void Light::fade(double aFrom, double aTo, MLMicroSeconds aFadeTime, MLMicroSeco
 
 void Light::startFading(double aTo, MLMicroSeconds aFadeTime)
 {
-  animator->animate(aTo, aFadeTime, NULL, dt);
+  animator->animate(aTo, aFadeTime, NULL);
 }
 
 double Light::current()

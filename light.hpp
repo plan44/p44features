@@ -59,7 +59,6 @@ namespace p44 {
 
 
     double currentValue = 0;
-    const MLMicroSeconds dt = 20 * MilliSecond;
     double to;
     double dv;
     MLTicket ticket;
