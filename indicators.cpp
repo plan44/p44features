@@ -60,9 +60,21 @@ ErrorPtr Indicators::initialize(JsonObjectPtr aInitData)
   reset();
   // { "cmd":"init", "indicators": {} }
   // { "cmd":"init", "indicators": { "rootview": <p44lrgraphics-view-config> } }
+  // { "cmd":"init", "indicators": { "ledchains": [ "ledchainspec1", "ledchainspec2", ... ], "rootview": <p44lrgraphics-view-config> } }
   ErrorPtr err;
   JsonObjectPtr o;
   if (ledChainArrangement) {
+    if (aInitData->get("ledchains", o)) {
+      // ledchain re-arrangement from config
+      // - forget default arrangement
+      ledChainArrangement->removeAllChains();
+      // - add chains from array of strings
+      for (int i=0; i<o->arrayLength(); ++i) {
+        JsonObjectPtr ao = o->arrayGet(i);
+        ledChainArrangement->addLEDChain(ao->stringValue());
+      }
+      ledChainArrangement->startChains(); // start chains that are not yet operating
+    }
     // get the ledChainArrangement's current rootview (possibly shared with other feature)
     P44ViewPtr rootView = ledChainArrangement->getRootView();
     if (aInitData->get("rootview", o)) {

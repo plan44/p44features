@@ -88,9 +88,23 @@ DispMatrix::~DispMatrix()
 ErrorPtr DispMatrix::initialize(JsonObjectPtr aInitData)
 {
   reset();
+  // { "cmd":"init", "dispmatrix": { "installationX":<x-offset>, "installationY":<y-offset> } }
+  // { "cmd":"init", "dispmatrix": { "installationX":<x-offset>, "installationY":<y-offset>, "rootview": <p44lrgraphics-view-config> } }
+  // { "cmd":"init", "dispmatrix": { "ledchains": [ "ledchainspec1", "ledchainspec2", ... ], "installationX":<x-offset>, "installationY":<y-offset>, "rootview": <p44lrgraphics-view-config> } }
   JsonObjectPtr o;
   ErrorPtr err;
   if (ledChainArrangement) {
+    if (aInitData->get("ledchains", o)) {
+      // ledchain re-arrangement from config
+      // - forget default arrangement
+      ledChainArrangement->removeAllChains();
+      // - add chains from array of strings
+      for (int i=0; i<o->arrayLength(); ++i) {
+        JsonObjectPtr ao = o->arrayGet(i);
+        ledChainArrangement->addLEDChain(ao->stringValue());
+      }
+      ledChainArrangement->startChains(); // start chains that are not yet operating
+    }
     // get the ledChainArrangement's current rootview
     rootView = ledChainArrangement->getRootView();
     if (aInitData->get("installationX", o)) {
