@@ -32,7 +32,7 @@
 
 using namespace p44;
 
-MixLoop::MixLoop(const string aLedChain1Name, const string aLedChain2Name) :
+MixLoop::MixLoop(const string aLedChain1Name, const string aLedChain2Name, bool doStart) :
   ledChain1Name(aLedChain1Name),
   ledChain2Name(aLedChain2Name),
   inherited("mixloop"),
@@ -61,7 +61,7 @@ MixLoop::MixLoop(const string aLedChain1Name, const string aLedChain2Name) :
   hitShowing(false)
 {
   // check for commandline-triggered standalone operation
-  if (CmdLineApp::sharedCmdLineApp()->getOption("mixloop")) {
+  if (doStart) {
     initOperation();
   }
 }

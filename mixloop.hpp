@@ -51,7 +51,9 @@ namespace p44 {
     bool hitShowing;
     MLTicket showTicket;
     MLTicket dispTicket;
+    #if ENABLE_LEGACY_FEATURE_SCRIPTS
     FeatureJsonScriptContextPtr scriptContext;
+    #endif
 
     // parameters
     // - measurement
@@ -77,7 +79,7 @@ namespace p44 {
 
   public:
 
-    MixLoop(const string aLedChain1Name, const string aLedChain2Name);
+    MixLoop(const string aLedChain1Name, const string aLedChain2Name, bool doStart);
 
     void shoot(double aAngle, double aIntensity, MLMicroSeconds aPulseLength);
 

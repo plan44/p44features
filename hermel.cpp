@@ -25,13 +25,12 @@
 
 using namespace p44;
 
-HermelShoot::HermelShoot(AnalogIoPtr aPwmLeft, AnalogIoPtr aPwmRight) :
+HermelShoot::HermelShoot(AnalogIoPtr aPwmLeft, AnalogIoPtr aPwmRight, bool doStart) :
   inherited("hermel"),
   pwmLeft(aPwmLeft),
   pwmRight(aPwmRight)
 {
-  // check for commandline-triggered standalone operation
-  if (CmdLineApp::sharedCmdLineApp()->getOption("hermel")) {
+  if (doStart) {
     initOperation();
   }
 }

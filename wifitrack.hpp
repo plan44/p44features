@@ -128,7 +128,9 @@ namespace p44 {
     FdCommPtr dumpStream;
 
     MLTicket restartTicket;
+    #if ENABLE_LEGACY_FEATURE_SCRIPTS
     FeatureJsonScriptContextPtr scriptContext;
+    #endif
 
     WTMacMap macs;
     WTSSidMap ssids;
@@ -162,7 +164,7 @@ namespace p44 {
 
   public:
 
-    WifiTrack(const string aMonitorIf);
+    WifiTrack(const string aMonitorIf, bool doStart);
     virtual ~WifiTrack();
 
     /// initialize the feature

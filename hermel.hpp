@@ -40,7 +40,7 @@ namespace p44 {
 
   public:
 
-    HermelShoot(AnalogIoPtr aPwmLeft, AnalogIoPtr aPwmRight);
+    HermelShoot(AnalogIoPtr aPwmLeft, AnalogIoPtr aPwmRight, bool doStart);
 
     void shoot(double aAngle, double aIntensity, MLMicroSeconds aPulseLength);
 

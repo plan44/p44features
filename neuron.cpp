@@ -29,18 +29,17 @@
 
 using namespace p44;
 
-Neuron::Neuron(const string aLedChain1Name, const string aLedChain2Name, AnalogIoPtr aSensor) :
+Neuron::Neuron(const string aLedChain1Name, const string aLedChain2Name, AnalogIoPtr aSensor, const string aStartCfg) :
   inherited("neuron")
 {
   ledChain1Name = aLedChain1Name;
   ledChain2Name = aLedChain2Name;
   sensor = aSensor;
   // check for commandline-triggered standalone operation
-  string s;
-  if (CmdLineApp::sharedCmdLineApp()->getStringOption("neuron", s)) {
+  if (aStartCfg!="0") {
     initOperation();
     std::vector<std::string> neuronOptions;
-    boost::split(neuronOptions, s, boost::is_any_of(","), boost::token_compress_on);
+    boost::split(neuronOptions, aStartCfg, boost::is_any_of(","), boost::token_compress_on);
     if(neuronOptions.size() != 4) {
       fprintf(stderr, "neuron needs 4 parameters: mvgAvgCnt,threshold,nAxonLeds,nBodyLeds\n");
       CmdLineApp::sharedCmdLineApp()->terminateApp(EXIT_FAILURE);

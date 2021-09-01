@@ -65,7 +65,7 @@ namespace p44 {
 
   public:
 
-    Light(AnalogIoPtr aPwmDimmer);
+    Light(AnalogIoPtr aPwmDimmer, bool doStart);
 
     void fade(double aFrom, double aTo, MLMicroSeconds aFadeTime, MLMicroSeconds aStartTime);
     double current();

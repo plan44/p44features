@@ -47,7 +47,7 @@ namespace p44 {
 
   public:
 
-    DispMatrix(LEDChainArrangementPtr aLedChainArrangement);
+    DispMatrix(LEDChainArrangementPtr aLedChainArrangement, const string aViewCfgStr);
     virtual ~DispMatrix();
 
     /// reset the feature to uninitialized/re-initializable state

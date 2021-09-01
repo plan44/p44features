@@ -25,8 +25,10 @@
 #include "p44features_common.hpp"
 
 #include "jsoncomm.hpp"
-
 #include "p44script.hpp"
+#if ENABLE_LEDARRANGEMENT
+  #include "ledchaincomm.hpp"
+#endif
 
 
 namespace p44 {
@@ -121,7 +123,7 @@ namespace p44 {
 
 
 
-//#error get rid of that, use real script instead
+  #if ENABLE_LEGACY_FEATURE_SCRIPTS
   class FeatureJsonScriptContext : public P44Obj
   {
     friend class FeatureApi;
@@ -133,6 +135,7 @@ namespace p44 {
 
   };
   typedef boost::intrusive_ptr<FeatureJsonScriptContext> FeatureJsonScriptContextPtr;
+  #endif
 
 
   #if ENABLE_P44SCRIPT
@@ -173,10 +176,16 @@ namespace p44 {
 
     /// singleton
     static FeatureApiPtr sharedApi();
+    static FeatureApiPtr existingSharedApi();
 
     /// add a feature
     /// @param aFeature the to add
     void addFeature(FeaturePtr aFeature);
+
+    /// add features as specified on command line to the global sharedApi()
+    /// @param aLedChainArrangement pass in the LED chain arrangement, if there is one
+    ///   (needed for features based on p44lrgraphics)
+    static void addFeaturesFromCommandLine(LEDChainArrangementPtr aLedChainArrangement);
 
     /// handle request
     /// @param aRequest the request to process
@@ -310,6 +319,95 @@ namespace p44 {
   } // namespace P44Script
   #endif // ENABLE_P44SCRIPT
 
+
+  #if ENABLE_FEATURE_LIGHT
+    #define FEATURE_LIGHT_CMDLINEOPTS \
+      { 0  , "light",          true,  "doinit;enable light feature (and optionally init)" }, \
+      { 0  , "pwmdimmer",      true,  "pinspec;PWM dimmer output pin" },
+  #else
+    #define FEATURE_LIGHT_CMDLINEOPTS
+  #endif
+  #if ENABLE_FEATURE_INPUTS
+    #define FEATURE_INPUTS_CMDLINEOPTS \
+      { 0  , "inputs",         false, "enable generic inputs" },
+  #else
+    #define FEATURE_INPUTS_CMDLINEOPTS
+  #endif
+  #if ENABLE_FEATURE_DISPMATRIX
+    #define FEATURE_DISPMATRIX_CMDLINEOPTS \
+      { 0  , "dispmatrix",     true,  "viewcfg|0;enable display matrix (and optionally init with viewcfg)" },
+  #else
+    #define FEATURE_DISPMATRIX_CMDLINEOPTS
+  #endif
+  #if ENABLE_FEATURE_INDICATORS
+    #define FEATURE_INDICATORS_CMDLINEOPTS \
+      { 0  , "indicators",     false,  "enable LED indicators" },
+  #else
+    #define FEATURE_INDICATORS_CMDLINEOPTS
+  #endif
+  #if ENABLE_FEATURE_SPLITFLAPS
+    #define FEATURE_SPLITFLAPS_CMDLINEOPTS \
+      { 0  , "splitflapconn",  true,  "serial_if;RS485 serial interface where display is connected (/device or IP:port)" }, \
+      { 0  , "splitflaptxen",  true,  "pinspec;a digital output pin specification for TX driver enable or DTR or RTS" }, \
+      { 0  , "splitflaptxoff", true,  "delay;time to keep tx enabled after sending [ms], defaults to 0" }, \
+      { 0  , "splitflaprxen",  true,  "pinspec;a digital output pin specification for RX driver enable" },
+  #else
+    #define FEATURE_SPLITFLAPS_CMDLINEOPTS
+  #endif
+  #if ENABLE_FEATURE_RFIDS
+    #define FEATURE_RFIDS_CMDLINEOPTS \
+      { 0  , "rfidspibus",     true,  "spi_bus;enable RFIDs with SPI bus specification (10s=bus number, 1s=CS number)" }, \
+      { 0  , "rfidselectgpios",true,  "gpioNr[,gpioNr...];List of GPIO numbers driving the CS selector multiplexer, LSBit first" }, \
+      { 0  , "rfidreset",      true,  "pinspec;RFID hardware reset signal (assuming noninverted connection to RFID readers)" }, \
+      { 0  , "rfidirq",        true,  "pinspec;RFID hardware IRQ signal (assuming noninverted connection to RFID readers)" },
+  #else
+    #define XXX
+  #endif
+  #if ENABLE_FEATURE_WIFITRACK
+    #define FEATURE_WIFITRACK_CMDLINEOPTS \
+      { 0  , "wifitrack",      true,  "doinit;enable wifitrack (and optionally init)" }, \
+      { 0  , "wifimonif",      true,  "interface;wifi monitoring interface to use" },
+  #else
+    #define FEATURE_WIFITRACK_CMDLINEOPTS
+  #endif
+  #if ENABLE_FEATURE_HERMEL
+    #define FEATURE_HERMEL_CMDLINEOPTS \
+      { 0  , "hermel",         false, "doinit;enable hermel (and optionally init)" }, \
+      { 0  , "pwmleft",        true,  "pinspec;PWM left bumper output pin" }, \
+      { 0  , "pwmright",       true,  "pinspec;PWM right bumper output pin" },
+  #else
+    #define FEATURE_HERMEL_CMDLINEOPTS
+  #endif
+  #if ENABLE_FEATURE_NEURON
+    #define FEATURE_NEURON_CMDLINEOPTS \
+      { 0  , "neuron",         true,  "mvgAvgCnt,threshold,nAxonLeds,nBodyLeds;start neuron" }, \
+      { 0  , "sensor0",        true,  "pinspec;analog sensor0 input to use" }, \
+      { 0  , "sensor1",        true,  "pinspec;analog sensor1 input to use" },
+  #else
+    #define FEATURE_NEURON_CMDLINEOPTS
+  #endif
+  #if ENABLE_FEATURE_MIXLOOP
+    #define FEATURE_MIXLOOP_CMDLINEOPTS \
+      { 0  , "mixloop",        true,  "doinit;enable mixloop (and optionally init)" }, \
+      { 0  , "ledchain2",      true,  "devicepath;ledchain2 device to use" }, \
+      { 0  , "ledchain3",      true,  "devicepath;ledchain3 device to use" },
+  #else
+    #define FEATURE_MIXLOOP_CMDLINEOPTS
+  #endif
+
+  /// - P44 features related command options
+  #define P44FEATURE_CMDLINE_OPTIONS \
+    FEATURE_LIGHT_CMDLINEOPTS \
+    FEATURE_INPUTS_CMDLINEOPTS \
+    FEATURE_DISPMATRIX_CMDLINEOPTS \
+    FEATURE_INDICATORS_CMDLINEOPTS \
+    FEATURE_SPLITFLAPS_CMDLINEOPTS \
+    FEATURE_RFIDS_CMDLINEOPTS \
+    FEATURE_WIFITRACK_CMDLINEOPTS \
+    FEATURE_NEURON_CMDLINEOPTS \
+    FEATURE_HERMEL_CMDLINEOPTS \
+    FEATURE_MIXLOOP_CMDLINEOPTS \
+    { 0  , "featureapiport", true,  "port;server port number for Feature JSON API (default=none)" }
 
 
 } // namespace p44

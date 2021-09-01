@@ -27,12 +27,11 @@
 
 using namespace p44;
 
-Light::Light(AnalogIoPtr aPwmDimmer) :
+Light::Light(AnalogIoPtr aPwmDimmer, bool doStart) :
   inherited("light"),
   pwmDimmer(aPwmDimmer)
 {
-  // check for commandline-triggered standalone operation
-  if (CmdLineApp::sharedCmdLineApp()->getOption("light")) {
+  if (doStart) {
     setInitialized();
   }
 }

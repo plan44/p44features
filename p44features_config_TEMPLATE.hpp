@@ -46,6 +46,7 @@
 #define ENABLE_FEATURE_MIXLOOP 0
 
 // options
+#define ENABLE_FEATURE_COMMANDLINE 1
 #define ENABLE_LEGACY_FEATURE_SCRIPTS 0
 
 // dependencies

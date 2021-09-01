@@ -67,7 +67,7 @@ namespace p44 {
 
   public:
 
-    Neuron(const string aLedChain1Name, const string aLedChain2Name, AnalogIoPtr aSensor);
+    Neuron(const string aLedChain1Name, const string aLedChain2Name, AnalogIoPtr aSensor, const string aStartCfg);
 
     void start(double aMovingAverageCount, double aThreshold, int aNumAxonLeds, int aNumBodyLeds);
     void fire(double aValue = 0);

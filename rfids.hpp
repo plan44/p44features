@@ -47,7 +47,7 @@ namespace p44 {
     typedef std::map<int,RFIDReader> RFIDReaderMap;
 
     SPIDevicePtr spiDevice; ///< the generic SPI device where readers are connected
-    RFID522::SelectCB readerSelectFunc; ///< the function to select a specific reader by index
+    DigitalIoBusPtr readerSelectBus; ///< the bus to select a specific reader by index
     DigitalIoPtr resetOutput; ///< common reset output
     DigitalIoPtr irqInput; ///< common IRQ input
     RFIDReaderMap rfidReaders; ///< the active RFID readers
@@ -67,10 +67,10 @@ namespace p44 {
 
     /// create set of RFID522 readers
     /// @param aSPIGenericDev a generic SPI device for the bus the readers are connected to
-    /// @param aReaderSelectFunc will be called to select readers by index
+    /// @param aSelectBus bus for selecting readers by index
     /// @param aResetOutput output that resets the RFID readers
     /// @param aIRQInput input connected to the IRQ lines of the RFID readers
-    RFIDs(SPIDevicePtr aSPIGenericDev, RFID522::SelectCB aReaderSelectFunc, DigitalIoPtr aResetOutput, DigitalIoPtr aIRQInput);
+    RFIDs(SPIDevicePtr aSPIGenericDev, DigitalIoBusPtr aSelectBus, DigitalIoPtr aResetOutput, DigitalIoPtr aIRQInput);
     virtual ~RFIDs();
 
     /// reset the feature to uninitialized/re-initializable state
@@ -92,6 +92,8 @@ namespace p44 {
 
   private:
 
+    void selectReader(int aReaderIndex);
+    
     void resetReaders(SimpleCB aDoneCB);
     void releaseReset(SimpleCB aDoneCB);
     void resetDone(SimpleCB aDoneCB);

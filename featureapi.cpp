@@ -23,6 +23,38 @@
 
 #include "feature.hpp"
 
+#if ENABLE_FEATURE_LIGHT
+  #include "light.hpp"
+#endif
+#if ENABLE_FEATURE_INPUTS
+  #include "inputs.hpp"
+#endif
+#if ENABLE_FEATURE_DISPMATRIX
+  #include "dispmatrix.hpp"
+#endif
+#if ENABLE_FEATURE_INDICATORS
+  #include "indicators.hpp"
+#endif
+#if ENABLE_FEATURE_SPLITFLAPS
+  #include "splitflaps.hpp"
+#endif
+#if ENABLE_FEATURE_RFIDS
+  #include "rfids.hpp"
+#endif
+#if ENABLE_FEATURE_WIFITRACK
+  #include "wifitrack.hpp"
+#endif
+#if ENABLE_FEATURE_NEURON
+  #include "neuron.hpp"
+#endif
+#if ENABLE_FEATURE_HERMEL
+  #include "hermel.hpp"
+#endif
+#if ENABLE_FEATURE_MIXLOOP
+  #include "mixloop.hpp"
+#endif
+
+
 #include "extutils.hpp"
 #include "macaddress.hpp"
 #include "application.hpp"
@@ -101,6 +133,12 @@ void APICallbackRequest::sendResponse(JsonObjectPtr aResponse, ErrorPtr aError)
 // MARK: ===== FeatureApi
 
 static FeatureApiPtr featureApi;
+
+FeatureApiPtr FeatureApi::existingSharedApi()
+{
+  return featureApi;
+}
+
 
 FeatureApiPtr FeatureApi::sharedApi()
 {
@@ -551,6 +589,121 @@ ErrorPtr FeatureApiError::err(const char *aFmt, ...)
 }
 
 
+// MARK: - instantiating  features from command line
+
+#if ENABLE_FEATURE_COMMANDLINE
+
+void FeatureApi::addFeaturesFromCommandLine(LEDChainArrangementPtr aLedChainArrangement)
+{
+  CmdLineApp* a = CmdLineApp::sharedCmdLineApp();
+  string s;
+  int doStart;
+  #if ENABLE_FEATURE_LIGHT
+  // - light
+  if (a->getIntOption("light", doStart)) {
+    AnalogIoPtr pwmDimmer = AnalogIoPtr(new AnalogIo(a->getOption("pwmdimmer","missing"), true, 0)); // off to begin with
+    sharedApi()->addFeature(FeaturePtr(new Light(pwmDimmer, doStart)));
+  }
+  #endif
+  #if ENABLE_FEATURE_INPUTS
+  // - inputs (instantiate only with command line option, as it allows free use of GPIOs etc.)
+  if (a->getOption("inputs")) {
+    sharedApi()->addFeature(FeaturePtr(new Inputs));
+  }
+  #endif
+  #if ENABLE_FEATURE_DISPMATRIX
+  // - dispmatrix
+  if (a->getStringOption("dispmatrix", s)) {
+    if (aLedChainArrangement) sharedApi()->addFeature(FeaturePtr(new DispMatrix(aLedChainArrangement, s)));
+  }
+  #endif
+  #if ENABLE_FEATURE_INDICATORS
+  // - indicators
+  if (a->getOption("indicators")) {
+    if (aLedChainArrangement) sharedApi()->addFeature(FeaturePtr(new Indicators(aLedChainArrangement  )));
+  }
+  #endif
+  #if ENABLE_FEATURE_RFIDS
+  // - RFIDs
+  int spibusno;
+  if (a->getIntOption("rfidspibus", spibusno)) {
+    // bus device
+    SPIDevicePtr spiBusDevice = SPIManager::sharedManager().getDevice(spibusno, "generic@0");
+    // reset
+    DigitalIoPtr resetPin = DigitalIoPtr(new DigitalIo(a->getOption("rfidreset","missing"), true, false)); // ResetN active to start with
+    DigitalIoPtr irqPin = DigitalIoPtr(new DigitalIo(a->getOption("rfidirq","missing"), false, true)); // assume high (open drain)
+    // selector
+    DigitalIoBusPtr selectBus = DigitalIoBusPtr(new DigitalIoBus(a->getOption("rfidselectgpios"), 8, true));
+    // add
+    sharedApi()->addFeature(FeaturePtr(new RFIDs(
+      spiBusDevice,
+      selectBus,
+      resetPin,
+      irqPin
+    )));
+  }
+  #endif // ENABLE_FEATURE_RFIDS
+  #if ENABLE_FEATURE_SPLITFLAPS
+  if (a->getStringOption("splitflapconn", s)) {
+    string tx,rx;
+    int txoffdelay = 0;
+    a->getStringOption("splitflaptxen", tx);
+    a->getStringOption("splitflaprxen", rx);
+    a->getIntOption("splitflaptxoff", txoffdelay);
+    // add
+    sharedApi()->addFeature(FeaturePtr(new Splitflaps(
+      s.c_str(), 2121,
+      tx.c_str(), rx.c_str(), txoffdelay
+    )));
+  }
+  #endif // ENABLE_FEATURE_SPLITFLAPS
+  #if ENABLE_FEATURE_WIFITRACK
+  // - wifitrack
+  if (a->getIntOption("wifitrack", doStart)) {
+    sharedApi()->addFeature(FeaturePtr(new WifiTrack(a->getOption("wifimonif",""), doStart)));
+  }
+  #endif
+  #if ENABLE_FEATURE_HERMEL
+  // - hermel
+  if (a->getIntOption("hermel", doStart)) {
+    AnalogIoPtr pwmLeft = AnalogIoPtr(new AnalogIo(a->getOption("pwmleft","missing"), true, 0)); // off to begin with
+    AnalogIoPtr pwmRight = AnalogIoPtr(new AnalogIo(a->getOption("pwmright","missing"), true, 0)); // off to begin with
+    sharedApi()->addFeature(FeaturePtr(new HermelShoot(pwmLeft, pwmRight, doStart)));
+  }
+  #endif
+  #if ENABLE_FEATURE_NEURON
+  #warning "legacy direct LEDchain access"
+  // - neuron
+  if (a->getStringOption("neuron", s)) {
+    AnalogIoPtr sensor0 =  AnalogIoPtr(new AnalogIo(a->getOption("sensor0","missing"), false, 0));
+    sharedApi()->addFeature(FeaturePtr(new Neuron(
+      a->getOption("ledchain1","/dev/null"),
+      a->getOption("ledchain2","/dev/null"),
+      sensor0,
+      s
+    )));
+  }
+  #endif
+  #if ENABLE_FEATURE_MIXLOOP
+  #warning "legacy direct LEDchain access"
+  // - mixloop
+  if (a->getIntOption("mixloop", doStart)) {
+    sharedApi()->addFeature(FeaturePtr(new MixLoop(
+      a->getOption("ledchain2","/dev/null"),
+      a->getOption("ledchain3","/dev/null"),
+      doStart
+    )));
+  }
+  #endif
+  // now, start API if port is selected
+  string apiport;
+  if (a->getStringOption("featureapiport", apiport)) {
+    sharedApi()->start(apiport);
+  }
+}
+
+#endif // ENABLE_FEATURE_COMMANDLINE
+
 // MARK: - script support
 
 #if ENABLE_P44SCRIPT
@@ -558,7 +711,6 @@ ErrorPtr FeatureApiError::err(const char *aFmt, ...)
 using namespace P44Script;
 
 
-#if ENABLE_P44SCRIPT
 void FeatureApi::scriptExecHandler(ApiRequestPtr aRequest, ScriptObjPtr aResult)
 {
   // just returns the exit code of the script as JSON
@@ -569,7 +721,6 @@ void FeatureApi::scriptExecHandler(ApiRequestPtr aRequest, ScriptObjPtr aResult)
   }
   aRequest->sendResponse(ans, ErrorPtr());
 }
-#endif
 
 
 JsonObjectPtr FeatureApi::pendingEvent()

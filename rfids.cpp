@@ -38,10 +38,10 @@ using namespace p44;
 #define RFID_DEFAULT_SAME_ID_TIMEOUT (3*Second)
 #define RFID_POLL_PAUSE_AFTER_DETECT (1*Second)
 
-RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, RFID522::SelectCB aReaderSelectFunc, DigitalIoPtr aResetOutput, DigitalIoPtr aIRQInput) :
+RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, DigitalIoBusPtr aSelectBus, DigitalIoPtr aResetOutput, DigitalIoPtr aIRQInput) :
   inherited(FEATURE_NAME),
   spiDevice(aSPIGenericDev),
-  readerSelectFunc(aReaderSelectFunc),
+  readerSelectBus(aSelectBus),
   resetOutput(aResetOutput),
   irqInput(aIRQInput),
   pauseIrqHandling(false),
@@ -71,6 +71,16 @@ RFIDs::~RFIDs()
 
 // MARK: ==== rfids API
 
+void RFIDs::selectReader(int aReaderIndex)
+{
+  if (aReaderIndex==RFID522::Deselect) {
+    // means highest index
+    aReaderIndex = readerSelectBus->getMaxBusValue();
+  }
+  readerSelectBus->setBusValue(aReaderIndex);
+}
+
+
 
 ErrorPtr RFIDs::initialize(JsonObjectPtr aInitData)
 {
@@ -93,7 +103,7 @@ ErrorPtr RFIDs::initialize(JsonObjectPtr aInitData)
       for (int i=0; i<o->arrayLength(); i++) {
         int readerIndex = o->arrayGet(i)->int32Value();
         RFIDReader rd;
-        rd.reader = RFID522Ptr(new RFID522(spiDevice, readerIndex, readerSelectFunc));
+        rd.reader = RFID522Ptr(new RFID522(spiDevice, readerIndex, boost::bind(&RFIDs::selectReader, this, _1)));
         rfidReaders[readerIndex] = rd;
       }
     }

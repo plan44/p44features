@@ -84,7 +84,7 @@ WTPerson::WTPerson() :
 
 // MARK: ===== WifiTrack
 
-WifiTrack::WifiTrack(const string aMonitorIf) :
+WifiTrack::WifiTrack(const string aMonitorIf, bool doStart) :
   inherited("wifitrack"),
   directDisplay(true),
   apiNotify(false),
@@ -108,7 +108,7 @@ WifiTrack::WifiTrack(const string aMonitorIf) :
   loadingContent(false)
 {
   // check for commandline-triggered standalone operation
-  if (CmdLineApp::sharedCmdLineApp()->getOption("wifitrack")) {
+  if (doStart) {
     initOperation();
   }
 }

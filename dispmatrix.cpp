@@ -42,7 +42,7 @@ using namespace p44;
 #define FEATURE_NAME "dispmatrix"
 
 
-DispMatrix::DispMatrix(LEDChainArrangementPtr aLedChainArrangement) :
+DispMatrix::DispMatrix(LEDChainArrangementPtr aLedChainArrangement, const string aViewCfgStr) :
   inherited(FEATURE_NAME),
   ledChainArrangement(aLedChainArrangement),
   installationOffsetX(0),
@@ -51,11 +51,10 @@ DispMatrix::DispMatrix(LEDChainArrangementPtr aLedChainArrangement) :
   // create the root view
   if (ledChainArrangement) {
     // check for commandline-triggered standalone operation, adding views from config
-    string cfgstr;
-    if (CmdLineApp::sharedCmdLineApp()->getStringOption(FEATURE_NAME, cfgstr)) {
+    if (aViewCfgStr!="0") {
       // json root view config or name of resource json file
       ErrorPtr err;
-      JsonObjectPtr cfg = Application::jsonObjOrResource(cfgstr, &err, FEATURE_NAME "/");
+      JsonObjectPtr cfg = Application::jsonObjOrResource(aViewCfgStr, &err, FEATURE_NAME "/");
       if (Error::isOK(err)) {
         initialize(cfg);
       }
@@ -227,7 +226,7 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
         JsonObjectPtr viewConfig = data->get("config");
         if (viewConfig) {
           P44ViewPtr view = rootView->getView(viewLabel);
-          if (view) err = view->configureFromResourceOrObj(viewConfig, "dispmatrix/");
+          if (view) err = view->configureFromResourceOrObj(viewConfig, FEATURE_NAME "/");
           return err ? err : Error::ok();
         }
       }

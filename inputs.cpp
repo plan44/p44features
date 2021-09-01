@@ -31,10 +31,7 @@ using namespace p44;
 Inputs::Inputs() :
   inherited(FEATURE_NAME)
 {
-  // check for commandline-triggered standalone operation
-  if (CmdLineApp::sharedCmdLineApp()->getOption("light")) {
-    setInitialized();
-  }
+  // must always be explicitly initialized
 }
 
 
