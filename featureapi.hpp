@@ -26,7 +26,6 @@
 
 #include "jsoncomm.hpp"
 
-#include "expressions.hpp"
 #include "p44script.hpp"
 
 
@@ -136,31 +135,6 @@ namespace p44 {
   typedef boost::intrusive_ptr<FeatureJsonScriptContext> FeatureJsonScriptContextPtr;
 
 
-  #if EXPRESSION_SCRIPT_SUPPORT
-
-  class FeatureApiScriptContext : public ScriptExecutionContext
-  {
-    typedef ScriptExecutionContext inherited;
-    friend class FeatureApi;
-
-    JsonObjectPtr apiMessage;
-
-  public:
-
-    FeatureApiScriptContext(JsonObjectPtr aMessage) : apiMessage(aMessage) {};
-
-    /// evaluation of synchronously implemented functions which immediately return a result
-    virtual bool evaluateFunction(const string &aFunc, const FunctionArguments &aArgs, ExpressionValue &aResult) override;
-
-    /// evaluation of asynchronously implemented functions which may yield execution and resume later
-    virtual bool evaluateAsyncFunction(const string &aFunc, const FunctionArguments &aArgs, bool &aNotYielded) override;
-
-  };
-  typedef boost::intrusive_ptr<FeatureApiScriptContext> FeatureApiScriptContextPtr;
-
-  #endif // EXPRESSION_SCRIPT_SUPPORT
-
-
   #if ENABLE_P44SCRIPT
   using namespace P44Script;
   #endif
@@ -187,16 +161,6 @@ namespace p44 {
     JsonObjectPtr mPendingEvent; ///< latest outgoing feature API event message
     #endif // ENABLE_P44SCRIPT
 
-
-    #if EXPRESSION_SCRIPT_SUPPORT
-    string eventScript;
-
-    typedef std::list<FeatureApiScriptContextPtr> FeatureApiScriptContextsList;
-    FeatureApiScriptContextsList scriptRequests;
-
-    TimedEvaluationContext trigger;
-
-    #endif
 
   public:
 
@@ -263,23 +227,6 @@ namespace p44 {
 
     /// send (event) message to API
     void sendEventMessage(JsonObjectPtr aEventMessage);
-
-    #if EXPRESSION_SCRIPT_SUPPORT
-
-    /// script function support
-    static bool evaluateAsyncFeatureFunctions(EvaluationContext* aEvalContext, const string &aFunc, const FunctionArguments &aArgs, bool &aNotYielded);
-    static void apiCallFunctionDone(EvaluationContext* aEvalContext, JsonObjectPtr aResult, ErrorPtr aError);
-
-    /// queue script for execution
-    /// @param aScriptCode the code for the script
-    /// @param aMessage the message related to the script call, which will be available from messsage() built-in function
-    void queueScript(const char *aScriptContextInfo, const string &aScriptCode, JsonObjectPtr aMessage = NULL);
-
-    void runNextScript();
-    void scriptDone(FeatureApiScriptContextPtr aScript);
-    void triggerEvaluationExecuted(ExpressionValue aEvaluationResult);
-
-    #endif // EXPRESSION_SCRIPT_SUPPORT
 
     #if ENABLE_P44SCRIPT
     JsonObjectPtr pendingEvent(); ///< read (and clear) currently pending event message

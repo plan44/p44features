@@ -112,9 +112,6 @@ FeatureApiPtr FeatureApi::sharedApi()
 
 
 FeatureApi::FeatureApi()
-  #if EXPRESSION_SCRIPT_SUPPORT
-  : trigger(NULL) // FIXME: add geolocation here
-  #endif
 {
 }
 
@@ -373,25 +370,6 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
   }
   else {
     // must be global command
-    #if EXPRESSION_SCRIPT_SUPPORT
-    if (reqData->get("eventscript", o, true)) {
-      // set a script handling internally generated events
-      eventScript = o->stringValue();
-      return Error::ok();
-    }
-    if (reqData->get("triggerexpression", o, true)) {
-      // set a global trigger expression
-      trigger.setCode(o->stringValue());
-      trigger.setEvaluationResultHandler(boost::bind(&FeatureApi::triggerEvaluationExecuted, this, _1));
-      trigger.triggerEvaluation(evalmode_initial);
-      return Error::ok();
-    }
-    if (reqData->get("run", o, true)) {
-      // directly run a script
-      queueScript("API run cmd", o->stringValue());
-      return Error::ok();
-    }
-    #endif // EXPRESSION_SCRIPT_SUPPORT
     #if ENABLE_P44SCRIPT
     if (reqData->get("run", o, true)) {
       // directly run a script.
@@ -436,18 +414,6 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
     }
   }
 }
-
-
-#if EXPRESSION_SCRIPT_SUPPORT
-void FeatureApi::triggerEvaluationExecuted(ExpressionValue aEvaluationResult)
-{
-  if (aEvaluationResult.boolValue()) {
-    JsonObjectPtr message = JsonObject::newObj();
-    message->add("triggerresult", aEvaluationResult.jsonValue() );
-    sendMessage(message);
-  }
-}
-#endif
 
 
 ErrorPtr FeatureApi::reset(ApiRequestPtr aRequest)
@@ -549,12 +515,6 @@ void FeatureApi::start(const string aApiPort)
 
 void FeatureApi::sendEventMessage(JsonObjectPtr aEventMessage)
 {
-  #if EXPRESSION_SCRIPT_SUPPORT
-  if (!eventScript.empty()) {
-    // call event script
-    queueScript("API event", eventScript, aEventMessage);
-  }
-  #endif // EXPRESSION_SCRIPT_SUPPORT
   #if ENABLE_P44SCRIPT
   if (numSinks()>0) {
     mPendingEvent = aEventMessage;
@@ -719,124 +679,3 @@ void FeatureApiLookup::featureCallDone(BuiltinFunctionContextPtr f, JsonObjectPt
 }
 
 #endif // ENABLE_P44SCRIPT
-
-
-
-#if EXPRESSION_SCRIPT_SUPPORT
-
-bool FeatureApi::evaluateAsyncFeatureFunctions(EvaluationContext* aEvalContext, const string &aFunc, const FunctionArguments &aArgs, bool &aNotYielded)
-{
-  if (aFunc=="call" && aArgs.size()>=1 && aArgs.size()<=2) {
-    // call a command or property change on the feature API
-    //   call(feature_api_json [, concurrent])
-    if (aArgs[0].notValue()) return aEvalContext->errorInArg(aArgs[0], true);
-    bool concurrent = aArgs[1].boolValue();
-    ExpressionValue res;
-    JsonObjectPtr call;
-    ErrorPtr err;
-    #if EXPRESSION_JSON_SUPPORT
-    call = aArgs[0].jsonValue(&err);
-    #else
-    call = JsonObject::objFromText(aArgs[0].stringValue().c_str(), -1, &err, false);
-    #endif
-    if (Error::notOK(err)) return aEvalContext->throwError(err);
-    // concurrent or blocking requests are possible
-    ApiRequestPtr request;
-    if (concurrent) {
-      request = ApiRequestPtr(new APICallbackRequest(call, NULL));
-      aEvalContext->continueWithAsyncFunctionResult(res);
-      return true;
-    }
-    else {
-      request = ApiRequestPtr(new APICallbackRequest(call, boost::bind(&FeatureApi::apiCallFunctionDone, aEvalContext, _1, _2)));
-    }
-    FeatureApi::sharedApi()->handleRequest(request);
-    aNotYielded = false; // callback will get result
-    return true;
-  }
-  else if (aFunc=="message") {
-    // Issue a API message (not interpreted except possibly by a message handler script
-    //   message(feature_api_json)
-    if (aArgs[0].notValue()) return aEvalContext->errorInArg(aArgs[0], true);
-    JsonObjectPtr msg;
-    ErrorPtr err;
-    #if EXPRESSION_JSON_SUPPORT
-    msg = aArgs[0].jsonValue(&err);
-    #else
-    msg = JsonObject::objFromText(aArgs[0].stringValue().c_str(), -1, &err, false);
-    #endif
-    if (Error::notOK(err)) return aEvalContext->throwError(err);
-    sharedApi()->sendMessage(msg);
-  }
-  return false;
-}
-
-
-void FeatureApi::apiCallFunctionDone(EvaluationContext* aEvalContext, JsonObjectPtr aResult, ErrorPtr aError)
-{
-  SOLOG(*FeatureApi::sharedApi(), LOG_INFO, "call returns '%s', error = %s", aResult->c_strValue(), Error::text(aError));
-  ExpressionValue res;
-  if (Error::isOK(aError)) {
-    res.setJson(aResult);
-  }
-  else {
-    res.setError(aError);
-  }
-  aEvalContext->continueWithAsyncFunctionResult(res);
-}
-
-
-void FeatureApi::queueScript(const char *aScriptContextInfo, const string &aScriptCode, JsonObjectPtr aMessage)
-{
-  FeatureApiScriptContextPtr script = FeatureApiScriptContextPtr(new FeatureApiScriptContext(aMessage));
-  script->setCode(aScriptCode);
-  script->setContextInfo(aScriptContextInfo, this);
-  scriptRequests.push_back(script);
-  if (scriptRequests.size()==1) {
-    // there was no script pending, must start
-    runNextScript();
-  }
-}
-
-void FeatureApi::runNextScript()
-{
-  if (!scriptRequests.empty()) {
-    FeatureApiScriptContextPtr script = scriptRequests.front();
-    OLOG(LOG_INFO, "+++ Starting script");
-    script->execute(true, boost::bind(&FeatureApi::scriptDone, this, script));
-  }
-}
-
-
-void FeatureApi::scriptDone(FeatureApiScriptContextPtr aScript)
-{
-  OLOG(LOG_INFO, "--- Finished script");
-  scriptRequests.pop_front();
-  runNextScript();
-}
-
-
-
-// MARK: - FeatureApiScriptContext
-
-
-bool FeatureApiScriptContext::evaluateAsyncFunction(const string &aFunc, const FunctionArguments &aArgs, bool &aNotYielded)
-{
-  if (FeatureApi::evaluateAsyncFeatureFunctions(this, aFunc, aArgs, aNotYielded)) return true;
-  return inherited::evaluateAsyncFunction(aFunc, aArgs, aNotYielded);
-}
-
-
-bool FeatureApiScriptContext::evaluateFunction(const string &aFunc, const FunctionArguments &aArgs, ExpressionValue &aResult)
-{
-  if (aFunc=="message" && aArgs.size()==0) {
-    aResult.setJson(apiMessage);
-  }
-  else {
-    return inherited::evaluateFunction(aFunc, aArgs, aResult);
-  }
-  return true;
-}
-
-
-#endif // EXPRESSION_SCRIPT_SUPPORT
