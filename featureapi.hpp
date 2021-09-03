@@ -358,7 +358,7 @@ namespace p44 {
   #if ENABLE_FEATURE_RFIDS
     #define FEATURE_RFIDS_CMDLINEOPTS \
       { 0  , "rfidspibus",     true,  "spi_bus;enable RFIDs with SPI bus specification (10s=bus number, 1s=CS number)" }, \
-      { 0  , "rfidselectgpios",true,  "gpioNr[,gpioNr...];List of GPIO numbers driving the CS selector multiplexer, LSBit first" }, \
+      { 0  , "rfidselectpins", true,  "pinspec[,pinspec...];List of GPIO numbers driving the CS selector multiplexer, MSBit first" }, \
       { 0  , "rfidreset",      true,  "pinspec;RFID hardware reset signal (assuming noninverted connection to RFID readers)" }, \
       { 0  , "rfidirq",        true,  "pinspec;RFID hardware IRQ signal (assuming noninverted connection to RFID readers)" },
   #else

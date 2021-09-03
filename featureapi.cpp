@@ -646,7 +646,7 @@ void FeatureApi::addFeaturesFromCommandLine(LEDChainArrangementPtr aLedChainArra
     DigitalIoPtr resetPin = DigitalIoPtr(new DigitalIo(a->getOption("rfidreset","missing"), true, false)); // ResetN active to start with
     DigitalIoPtr irqPin = DigitalIoPtr(new DigitalIo(a->getOption("rfidirq","missing"), false, true)); // assume high (open drain)
     // selector
-    DigitalIoBusPtr selectBus = DigitalIoBusPtr(new DigitalIoBus(a->getOption("rfidselectgpios"), 8, true));
+    DigitalIoBusPtr selectBus = DigitalIoBusPtr(new DigitalIoBus(a->getOption("rfidselectpins"), 8, true));
     // add
     sharedApi()->addFeature(FeaturePtr(new RFIDs(
       spiBusDevice,
