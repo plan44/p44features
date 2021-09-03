@@ -3,12 +3,12 @@ p44features
 
 *[[if you want to support p44features development, please consider to sponsor plan44]](https://github.com/sponsors/plan44)* 
 
-*p44features* is a set of free (opensource, GPLv3) C++ classes and functions building a library of "features" for various applications in exhibitions, experiments, art and fun projects. Each "feature" usually drives a particular piece of hardware, such as LEDs, solenoids, sensors etc. The features have a common base class and are accessible via a common JSON API.
+*p44features* is a set of free (opensource, GPLv3) C++ classes and functions building a library of "features" for various applications in exhibitions, experiments, art and fun projects. Each "feature" usually drives a particular piece of hardware, such as LEDs, solenoids, sensors etc. The features have a common base class and are accessible via a common JSON API. When used in applications with [p44script](https://plan44.ch/p44-techdocs/en/#topics) enabled, these features can also be controller from on-devices scripts.
 
 *p44features* needs some classes and functions from the [*p44utils*](https://github.com/plan44/p44utils) and [*p44lrgraphics*](https://github.com/plan44/p44lrgraphics) libraries.
 
 Projects using p44features (or cointaining roots that led to it) include 
-the [ETH digital platform](https://plan44.ch/custom#leth), the "chatty wifi" installation I brought to the 35c3, or the "hermeldon 2018" remote crocket playing installation (both in the [*hermel* branch of *lethd*](https://github.com/plan44/lethd/tree/hermeld)). At the time of writing, a large exhibition project based on p44features is in the making.
+the [ETH digital platform](https://plan44.ch/custom#leth), the "chatty wifi" installation I brought to the 35c3, or the "hermeldon 2018" remote crocket playing installation (both in the [*hermel* branch of *lethd*](https://github.com/plan44/lethd/tree/hermeld)). At the time of writing, p44features are getting intergrated into the [vdcd](https://plan44.ch/opensource/vdcd) project, which allows for interesting augmentation of home automation systems.
 
 
 Usage
@@ -32,7 +32,7 @@ Features
 List of currently available features, will expand with each new project:
 
 - indicators: areas in a LED strip or matrix used as indicators with different styles
-- rfid: multiple cheap RFID readers as user-detecting "buttons"
+- rfids: multiple cheap RFID readers as user-detecting "buttons"
 - dispmatrix: time synchronized LED matrix displays for large scrolling text display
 - inputs: use any GPIO, or pins of some i2c/spi based I/O extensions, or console keys for simulation, as generic inputs
 - light: simple PWM light dimmer
@@ -57,11 +57,17 @@ Feature API calls consist of a JSON object. One call can contain one command and
 
 See below for examples
 
-### common to all features
+### global commands
 
 { "cmd":"status" }
 
 - get status of all features
+
+{ "event":{ ... } }
+
+- inject an event (that might be processed by custom p44script on device).
+
+### common to all features
 
 { "cmd":"status", "feature": "*featurename*" }
 
@@ -140,8 +146,7 @@ See below for examples
 
 - *index* are the physical bus addresses (0..23 in p44rfidctrl and p44rfidhat hardware) to select the reader. Depending on which readers on which cables are in use, this can be a sequence of numbers with or without gaps.
 - *pollinterval_seconds* is the  polling interval for the connected readers, i.e. how often every reader will be checked for the presence of a new RFID tag (default: 0.1 seconds)
-- *pauseafterdetect* is the  polling interval for the connected readers, i.e. how often every reader will be checked for the presence of a new RFID tag (default: 0.1 seconds)
-- *re\_reporting\_timeout* is the time during which a reader will not report the same nUID again (default: 3 seconds)
+- *re\_reporting\_timeout* is the time during which a reader will not report the _same nUID again (default: 3 seconds)
 - *poll\_pause\_after\_card\_detected* is the time polling RFIDs will be paused after detecting a card - mainly to free performance for LED effects, as SPI on RPi seems to block a lot (default: 1 second)
 
 
@@ -164,7 +169,7 @@ See below for examples
 
 - The "modules" array defines the splitflaps to be used.
 - *name* is a handle for the module to access it with the *position* command later (see below).
-- *module_address* is the module address of the splitflap module (for SBB modules, usually written onto a yellow sticker on the module itself, but as the address can be reprogrammed the sticker might not be correct in all cases).
+- *module_address* is the module address of the splitflap module (for SBB (Swiss Railways) modules, usually written onto a yellow sticker on the module itself, but as the address can be reprogrammed, the sticker might not be correct in all cases).
 - the "type" field specifies the module kind. *hour* and *minute* are basically the same as *40* and *62*, however the flap indices are made to match the actual numerical display (the flaps are not in strict ascending order in those modules). *40* and *62* are for generic modules with 40 and 62 flaps, resp. 
 
 #### Set splitflap positions
@@ -194,4 +199,4 @@ Sets the module that was named *module_name* at initialisation (see above) to po
 - *input_value* is the current value of the input
 
 
-(c) 2013-2020 by Lukas Zeller / [plan44.ch](https://www.plan44.ch/opensource.php)
+(c) 2013-2021 by Lukas Zeller / [plan44.ch](https://www.plan44.ch/opensource.php)
