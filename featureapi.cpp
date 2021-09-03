@@ -418,6 +418,12 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
       src.run(inherit, boost::bind(&FeatureApi::scriptExecHandler, this, aRequest, _1));
       return Error::ok();
     }
+    if (reqData->get("event", o, true)) {
+      // inject a event, which may be processed via featureevent() in scripts, but is NOT sent (back) to the API client
+      o->add("feature", JsonObject::newString("apievent")); // not really originating from a feature, but this api call
+      sendEventMessageInternally(o);
+      return Error::ok();
+    }
     #endif // ENABLE_P44SCRIPT
     if (!reqData->get("cmd", o, true)) {
       return FeatureApiError::err("missing 'feature' or 'cmd' attribute");
@@ -553,16 +559,23 @@ void FeatureApi::start(const string aApiPort)
 
 void FeatureApi::sendEventMessage(JsonObjectPtr aEventMessage)
 {
+  sendEventMessageInternally(aEventMessage);
+  sendEventMessageToApiClient(aEventMessage);
+}
+
+
+void FeatureApi::sendEventMessageInternally(JsonObjectPtr aEventMessage)
+{
   #if ENABLE_P44SCRIPT
   if (numSinks()>0) {
     mPendingEvent = aEventMessage;
     sendEvent(new FeatureEventObj(mPendingEvent)); // needs to have one-shot marker
   }
   #endif
-  sendEventMessageInternal(aEventMessage);
 }
 
-void FeatureApi::sendEventMessageInternal(JsonObjectPtr aEventMessage)
+
+void FeatureApi::sendEventMessageToApiClient(JsonObjectPtr aEventMessage)
 {
   if (!connection) {
     OLOG(LOG_WARNING, "no connection, event message cannot be sent: %s", aEventMessage ? aEventMessage->json_c_str() : "<none>");
@@ -769,7 +782,7 @@ static void featureevent_func(BuiltinFunctionContextPtr f)
   }
   // send a feature API event message (to API client)
   JsonObjectPtr jevent = f->arg(0)->jsonValue();
-  FeatureApi::sharedApi()->sendEventMessageInternal(jevent); // without triggering featureevent()
+  FeatureApi::sharedApi()->sendEventMessageToApiClient(jevent); // without triggering featureevent()
   f->finish();
 }
 

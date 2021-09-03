@@ -244,7 +244,8 @@ namespace p44 {
 
 
     ErrorPtr processRequest(ApiRequestPtr aRequest);
-    void sendEventMessageInternal(JsonObjectPtr aEventMessage);
+    void sendEventMessageToApiClient(JsonObjectPtr aEventMessage);
+    void sendEventMessageInternally(JsonObjectPtr aEventMessage);
 
   private:
 
