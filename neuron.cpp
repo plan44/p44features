@@ -192,7 +192,7 @@ void Neuron::animateAxon(MLTimer &aTimer)
 {
   for(int i = 0; i < numAxonLeds; i++) {
     uint8_t c = abs(i - pos) < 4 ? 255 : 0;
-    if(ledChain1) ledChain1->setColorXY(i, 0, c, c, 0);
+    if(ledChain1) ledChain1->setPowerXY(i, 0, c, c, 0);
   }
   if(ledChain1) ledChain1->show();
   if(pos++ < numAxonLeds) {
@@ -218,9 +218,9 @@ void Neuron::animateBody(MLTimer &aTimer)
   for(int i = 0; i < numBodyLeds; i++) {
     uint8_t c = sin(phi) * 255;
     if(bodyState == BodyGlowing && abs(i - pos) < 4) {
-      if(ledChain2) ledChain2->setColorXY(i, 0, 0, glowBrightness * 255.0, glowBrightness * 178);
+      if(ledChain2) ledChain2->setPowerXY(i, 0, 0, glowBrightness * 255.0, glowBrightness * 178);
     } else {
-      if(ledChain2) ledChain2->setColorXY(i, 0, 0, glowBrightness * c, glowBrightness * 0.7 * c);
+      if(ledChain2) ledChain2->setPowerXY(i, 0, 0, glowBrightness * c, glowBrightness * 0.7 * c);
     }
   }
   if(ledChain2) ledChain2->show();

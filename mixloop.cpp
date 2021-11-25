@@ -346,10 +346,10 @@ void MixLoop::showAccel(double aFraction)
     OLOG(LOG_DEBUG, "onLeds=%d", onLeds);
     for (int i=0; i<numLeds; i++) {
       if (i<onLeds) {
-        ledChain1->setColor(numLeds-1-i, 255, 255-(255*i/numLeds), 0);
+        ledChain1->setPower(numLeds-1-i, 255, 255-(255*i/numLeds), 0);
       }
       else {
-        ledChain1->setColor(numLeds-1-i, 0, 0, 0);
+        ledChain1->setPower(numLeds-1-i, 0, 0, 0);
       }
     }
     ledChain1->show();
@@ -362,7 +362,7 @@ void MixLoop::showHit()
   hitShowing = true;
   if (ledChain1) {
     for (int i=0; i<numLeds; i++) {
-      ledChain1->setColor(i, 200, 200, 255);
+      ledChain1->setPower(i, 200, 200, 255);
     }
     ledChain1->show();
   }
