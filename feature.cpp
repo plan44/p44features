@@ -164,12 +164,19 @@ static void cmd_func(BuiltinFunctionContextPtr f)
 }
 
 // set(property, value)
-static const BuiltInArgDesc set_args[] = { { text }, { any } };
+// set(properties)
+static const BuiltInArgDesc set_args[] = { { text|json }, { any|optionalarg } };
 static const size_t set_numargs = sizeof(set_args)/sizeof(BuiltInArgDesc);
 static void set_func(BuiltinFunctionContextPtr f)
 {
-  JsonObjectPtr jcmd = JsonObject::newObj();
-  jcmd->add(f->arg(0)->stringValue().c_str(), f->arg(1)->jsonValue());
+  JsonObjectPtr jcmd;
+  if (f->numArgs()<2) {
+    jcmd = f->arg(0)->jsonValue();
+  }
+  else {
+    jcmd = JsonObject::newObj();
+    jcmd->add(f->arg(0)->stringValue().c_str(), f->arg(1)->jsonValue());
+  }
   issueCommand(f, jcmd);
 }
 
