@@ -140,6 +140,8 @@ namespace p44 {
 
     // settings
     bool ouiNames;
+    bool reportSightings;
+    bool aggregatePersons;
     bool rememberWithoutSsid;
     MLMicroSeconds minShowInterval;
     int minRssi; ///< minimal rssi, will be passed to tcpdump as packet filter if not 0

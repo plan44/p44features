@@ -94,6 +94,8 @@ WifiTrack::WifiTrack(const string aMonitorIf, bool doStart) :
   ouiNames(true),
   minShowInterval(3*Minute),
   minRssi(-80),
+  reportSightings(false),
+  aggregatePersons(true),
   scanBeacons(true),
   minProcessRssi(-99),
   minShowRssi(-65),
@@ -244,6 +246,12 @@ ErrorPtr WifiTrack::processRequest(ApiRequestPtr aRequest)
     if (data->get("ouiNames", o, true)) {
       ouiNames = o->boolValue();
     }
+    if (data->get("reportSightings", o)) {
+      reportSightings = o->boolValue();
+    }
+    if (data->get("aggregatePersons", o)) {
+      aggregatePersons = o->boolValue();
+    }
     if (data->get("minProcessRssi", o, true)) {
       minProcessRssi = o->int32Value();
     }
@@ -294,7 +302,10 @@ JsonObjectPtr WifiTrack::status()
     answer->add("minShowInterval", JsonObject::newDouble((double)minShowInterval/Second));
     answer->add("rememberWithoutSsid", JsonObject::newBool(rememberWithoutSsid));
     answer->add("ouiNames", JsonObject::newBool(ouiNames));
+    answer->add("reportSightings", JsonObject::newBool(reportSightings));
+    answer->add("aggregatePersons", JsonObject::newBool(aggregatePersons));
     answer->add("minRssi", JsonObject::newInt32(minRssi));
+    answer->add("scanBeacons", JsonObject::newBool(scanBeacons));
     answer->add("minProcessRssi", JsonObject::newInt32(minProcessRssi));
     answer->add("minShowRssi", JsonObject::newInt32(minShowRssi));
     answer->add("tooCommonMacCount", JsonObject::newInt32(tooCommonMacCount));
@@ -303,6 +314,10 @@ JsonObjectPtr WifiTrack::status()
     answer->add("maxDisplayDelay", JsonObject::newDouble((double)maxDisplayDelay/Second));
     answer->add("saveTempInterval", JsonObject::newDouble((double)saveTempInterval/Second));
     answer->add("saveDataInterval", JsonObject::newDouble((double)saveDataInterval/Second));
+    // also add some statistics
+    answer->add("numpersons", JsonObject::newInt64(persons.size()));
+    answer->add("nummacs", JsonObject::newInt64(macs.size()));
+    answer->add("numssids", JsonObject::newInt64(ssids.size()));
   }
   return answer;
 }
@@ -877,17 +892,20 @@ void WifiTrack::gotDumpLine(ErrorPtr aError)
       }
     }
     if (decoded) {
+      WTSSidPtr s;
+      WTMacPtr m;
+      bool newSSID = false;
       // record
       MLMicroSeconds now = MainLoop::now();
       // - SSID
       bool newSSidForMac = false;
-      WTSSidPtr s;
       WTSSidMap::iterator ssidPos = ssids.find(ssid);
       if (ssidPos!=ssids.end()) {
         s = ssidPos->second;
       }
       else {
         // unknown, create
+        newSSID = true;
         s = WTSSidPtr(new WTSSid);
         s->ssid = ssid;
         ssids[ssid] = s;
@@ -906,7 +924,6 @@ void WifiTrack::gotDumpLine(ErrorPtr aError)
         s->seenLast = now;
         s->seenCount++;
         // - MAC
-        WTMacPtr m;
         WTMacMap::iterator macPos = macs.find(mac);
         if (macPos!=macs.end()) {
           m = macPos->second;
@@ -936,8 +953,32 @@ void WifiTrack::gotDumpLine(ErrorPtr aError)
             s->macs.insert(m);
           }
           // process sighting
-          processSighting(m, s, newSSidForMac);
+          if (aggregatePersons) {
+            processSighting(m, s, newSSidForMac);
+          }
         }
+      }
+      if (reportSightings && apiNotify) {
+        JsonObjectPtr message = JsonObject::newObj();
+        JsonObjectPtr sighting = JsonObject::newObj();
+        sighting->add("type", JsonObject::newString(beacon ? "beacon" : "probe"));
+        sighting->add("newSSID", JsonObject::newBool(newSSID));
+        if (m) {
+          sighting->add("MAC", JsonObject::newString(macAddressToString(m->mac,':')));
+          sighting->add("MACsightings", JsonObject::newInt64(m->seenCount));
+          sighting->add("OUIname", JsonObject::newString(m->ouiName));
+          sighting->add("rssi", JsonObject::newInt32(m->lastRssi));
+          sighting->add("worstRssi", JsonObject::newInt32(m->worstRssi));
+          sighting->add("bestRssi", JsonObject::newInt32(m->bestRssi));
+        }
+        if (s) {
+          sighting->add("SSID", JsonObject::newString(s->ssid));
+          sighting->add("SSIDsightings", JsonObject::newInt64(s->seenCount));
+          sighting->add("hidden", JsonObject::newBool(s->hidden));
+          sighting->add("beaconRssi", JsonObject::newInt32(s->beaconRssi));
+        }
+        message->add("sighting", sighting);
+        sendEventMessage(message);
       }
     }
   }
@@ -957,7 +998,15 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
       string_format_append(s, "%s%s (%ld)", sep, sstr.c_str(), (*pos)->seenCount);
       sep = ", ";
     }
-    FOCUSOLOG("Sighted%s: MAC=%s, %s (%ld), RSSI=%d,%d,%d : %s", person ? " and already has person" : "", macAddressToString(aMac->mac,':').c_str(), nonNullCStr(aMac->ouiName), aMac->seenCount, aMac->worstRssi, aMac->lastRssi, aMac->bestRssi, s.c_str());
+    FOCUSOLOG(
+      "Sighted%s: MAC=%s, %s (%ld), RSSI=%d,%d,%d : %s",
+      person ? " and already has person" : "",
+      macAddressToString(aMac->mac,':').c_str(),
+      nonNullCStr(aMac->ouiName),
+      aMac->seenCount,
+      aMac->worstRssi, aMac->lastRssi, aMac->bestRssi,
+      s.c_str()
+    );
   }
   // process
   if (aNewSSidForMac && aSSid->macs.size()<tooCommonMacCount) {

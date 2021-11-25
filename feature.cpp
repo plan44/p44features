@@ -165,7 +165,7 @@ static void cmd_func(BuiltinFunctionContextPtr f)
 
 // set(property, value)
 // set(properties)
-static const BuiltInArgDesc set_args[] = { { text|json }, { any|optionalarg } };
+static const BuiltInArgDesc set_args[] = { { text|json|object }, { any|optionalarg } };
 static const size_t set_numargs = sizeof(set_args)/sizeof(BuiltInArgDesc);
 static void set_func(BuiltinFunctionContextPtr f)
 {
