@@ -578,7 +578,7 @@ void FeatureApi::sendEventMessageInternally(JsonObjectPtr aEventMessage)
 void FeatureApi::sendEventMessageToApiClient(JsonObjectPtr aEventMessage)
 {
   if (!connection) {
-    OLOG(LOG_INFO, "no API connection, event message not sent out: %s", aEventMessage ? aEventMessage->json_c_str() : "<none>");
+    OLOG(LOG_INFO, "no API connection, event message not sent out: %s", JsonObject::text(aEventMessage));
     return;
   }
   ErrorPtr err = connection->sendMessage(aEventMessage);
