@@ -143,9 +143,6 @@ namespace p44 {
   #endif
 
   class FeatureApi : public P44LoggingObj
-    #if ENABLE_P44SCRIPT
-    , public EventSource
-    #endif
   {
     friend class FeatureApiRequest;
 
@@ -158,12 +155,6 @@ namespace p44 {
     string devicelabel;
 
     MLTicket scriptTicket;
-
-    #if ENABLE_P44SCRIPT
-    ApiRequestPtr mPendingRequest; ///< latest incoming API request pending for processing via script (because it could not be processed internally)
-    JsonObjectPtr mPendingEvent; ///< latest outgoing feature API event message
-    #endif // ENABLE_P44SCRIPT
-
 
   public:
 
@@ -238,8 +229,11 @@ namespace p44 {
     void sendEventMessage(JsonObjectPtr aEventMessage);
 
     #if ENABLE_P44SCRIPT
-    JsonObjectPtr pendingEvent(); ///< read (and clear) currently pending event message
     void scriptExecHandler(ApiRequestPtr aRequest, ScriptObjPtr aResult);
+
+    EventSource mFeatureEventSource; /// feature events will be distributed via this source
+    EventSource mUnhandledRequestSource; ///< not internally handled feature API requests will be distributed via this source
+
     #endif // ENABLE_P44SCRIPT
 
 
@@ -292,18 +286,20 @@ namespace p44 {
   #if ENABLE_P44SCRIPT
   namespace P44Script {
 
-    class FeatureEventObj : public JsonValue
+    /// represents a feature API request/call
+    class FeatureRequestObj : public JsonValue
     {
       typedef JsonValue inherited;
 
-    public:
-      FeatureEventObj(JsonObjectPtr aJson);
-      virtual string getAnnotation() const P44_OVERRIDE;
-      virtual TypeInfo getTypeInfo() const P44_OVERRIDE;
+      ApiRequestPtr mRequest;
 
-      /// @return a souce of events for this object
-      virtual EventSource *eventSource() const P44_OVERRIDE;
+    public:
+      FeatureRequestObj(ApiRequestPtr aRequest);
+      void sendResponse(JsonObjectPtr aResponse, ErrorPtr aError);
+      virtual string getAnnotation() const P44_OVERRIDE;
+      virtual const ScriptObjPtr memberByName(const string aName, TypeInfo aMemberAccessFlags = none) P44_OVERRIDE;
     };
+
 
     /// represents the global objects related to p44features
     class FeatureApiLookup : public BuiltInMemberLookup

@@ -453,6 +453,12 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
     else if (cmd=="ping") {
       return ping(aRequest);
     }
+    #if ENABLE_P44SCRIPT
+    else if (mUnhandledRequestSource.hasSinks()) {
+      mUnhandledRequestSource.sendEvent(new FeatureRequestObj(aRequest));
+      return ErrorPtr(); // no default response, event handler must send it
+    }
+    #endif
     else {
       return FeatureApiError::err("unknown global command '%s'", cmd.c_str());
     }
@@ -567,9 +573,8 @@ void FeatureApi::sendEventMessage(JsonObjectPtr aEventMessage)
 void FeatureApi::sendEventMessageInternally(JsonObjectPtr aEventMessage)
 {
   #if ENABLE_P44SCRIPT
-  if (numSinks()>0) {
-    mPendingEvent = aEventMessage;
-    sendEvent(new FeatureEventObj(mPendingEvent)); // needs to have one-shot marker
+  if (mFeatureEventSource.hasSinks()) {
+    mFeatureEventSource.sendEvent(new JsonValue(aEventMessage)); // just a regular JSON value
   }
   #endif
 }
@@ -723,7 +728,6 @@ void FeatureApi::addFeaturesFromCommandLine(LEDChainArrangementPtr aLedChainArra
 
 using namespace P44Script;
 
-
 void FeatureApi::scriptExecHandler(ApiRequestPtr aRequest, ScriptObjPtr aResult)
 {
   // just returns the exit code of the script as JSON
@@ -736,48 +740,64 @@ void FeatureApi::scriptExecHandler(ApiRequestPtr aRequest, ScriptObjPtr aResult)
 }
 
 
-JsonObjectPtr FeatureApi::pendingEvent()
-{
-  JsonObjectPtr res = mPendingEvent;
-  mPendingEvent.reset();
-  return res;
-}
-
-
-FeatureEventObj::FeatureEventObj(JsonObjectPtr aJson) :
-  inherited(aJson)
+FeatureRequestObj::FeatureRequestObj(ApiRequestPtr aRequest) :
+  inherited(aRequest->getRequest()),
+  mRequest(aRequest)
 {
 }
 
-
-TypeInfo FeatureEventObj::getTypeInfo() const
+void FeatureRequestObj::sendResponse(JsonObjectPtr aResponse, ErrorPtr aError)
 {
-  return inherited::getTypeInfo()|oneshot; // returns the event only once
+  if(mRequest) mRequest->sendResponse(aResponse, aError);
+  mRequest.reset(); // done now
+}
+
+string FeatureRequestObj::getAnnotation() const
+{
+  return "feature call";
 }
 
 
-string FeatureEventObj::getAnnotation() const
+// answer([answer value])        answer the request/call
+static const BuiltInArgDesc answer_args[] = { { any|optionalarg } };
+static const size_t answer_numargs = sizeof(answer_args)/sizeof(BuiltInArgDesc);
+static void answer_func(BuiltinFunctionContextPtr f)
 {
-  return "feature event";
+  FeatureRequestObj* reqObj = dynamic_cast<FeatureRequestObj *>(f->thisObj().get());
+  if (f->arg(0)->isErr()) {
+    reqObj->sendResponse(JsonObjectPtr(), f->arg(0)->errorValue());
+  }
+  else {
+    reqObj->sendResponse(f->arg(0)->jsonValue(), ErrorPtr());
+  }
+  f->finish();
 }
+static const BuiltinMemberDescriptor answer_desc =
+  { "answer", executable|any, answer_numargs, answer_args, &answer_func };
 
 
-EventSource *FeatureEventObj::eventSource() const
+const ScriptObjPtr FeatureRequestObj::memberByName(const string aName, TypeInfo aMemberAccessFlags)
 {
-  // the API is the event source
-  return dynamic_cast<EventSource *>(FeatureApi::sharedApi().get());
+  ScriptObjPtr val;
+  if (uequals(aName, "answer")) {
+    val = new BuiltinFunctionObj(&answer_desc, this, NULL);
+  }
+  else {
+    val = inherited::memberByName(aName, aMemberAccessFlags);
+  }
+  return val;
 }
 
 
 // featureevent(json)    send a feature event
-// featureevent()        return latest unprocessed feature event
+// featureevent()        return feature event (only returns something in a trigger expressions, NULL otherwise)
 static const BuiltInArgDesc featureevent_args[] = { { json|structured|optionalarg } };
 static const size_t featureevent_numargs = sizeof(featureevent_args)/sizeof(BuiltInArgDesc);
 static void featureevent_func(BuiltinFunctionContextPtr f)
 {
   if (f->numArgs()==0) {
-    // return latest unprocessed API event
-    f->finish(new FeatureEventObj(FeatureApi::sharedApi()->pendingEvent()));
+    // return placeholder for incoming feature events
+    f->finish(new OneShotEventNullValue(dynamic_cast<EventSource *>(&(FeatureApi::sharedApi()->mFeatureEventSource)), "feature event"));
     return;
   }
   // send a feature API event message (to API client)
@@ -788,10 +808,17 @@ static void featureevent_func(BuiltinFunctionContextPtr f)
 
 
 // featurecall(json)      send a feature api call/request (for local processing)
-static const BuiltInArgDesc featurecall_args[] = { { json|object } };
+// featurecall()          return unhandled feature api call (only returns something in a trigger expressions, NULL otherwise)
+static const BuiltInArgDesc featurecall_args[] = { { json|object|optionalarg } };
 static const size_t featurecall_numargs = sizeof(featurecall_args)/sizeof(BuiltInArgDesc);
 static void featurecall_func(BuiltinFunctionContextPtr f)
 {
+  if (f->numArgs()==0) {
+    // return placeholder for incoming unhandled feature api calls
+    f->finish(new OneShotEventNullValue(dynamic_cast<EventSource *>(&(FeatureApi::sharedApi()->mUnhandledRequestSource)), "feature call"));
+    return;
+  }
+  // send a feature API request message
   JsonObjectPtr jreq = f->arg(0)->jsonValue();
   ApiRequestPtr request = ApiRequestPtr(new APICallbackRequest(jreq, boost::bind(&FeatureApiLookup::featureCallDone, f, _1, _2)));
   ErrorPtr err = FeatureApi::sharedApi()->processRequest(request);
@@ -818,7 +845,7 @@ static void feature_func(BuiltinFunctionContextPtr f)
 
 static const BuiltinMemberDescriptor featureApiGlobals[] = {
   { "feature", executable|any, feature_numargs, feature_args, &feature_func },
-  { "featurecall", executable|async|any, featurecall_numargs, featurecall_args, &featurecall_func },
+  { "featurecall", executable|json|null, featurecall_numargs, featurecall_args, &featurecall_func },
   { "featureevent", executable|json|null, featureevent_numargs, featureevent_args, &featureevent_func },
   { NULL } // terminator
 };
