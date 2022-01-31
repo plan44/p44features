@@ -198,5 +198,14 @@ Sets the module that was named *module_name* at initialisation (see above) to po
 - *input_name* is a name of the input.
 - *input_value* is the current value of the input
 
+Supporting p44features
+----------------------
 
-(c) 2013-2021 by Lukas Zeller / [plan44.ch](https://www.plan44.ch/opensource.php)
+1. use it!
+2. support development via [github sponsors](https://github.com/sponsors/plan44) or [flattr](https://flattr.com/@luz)
+3. Discuss it in the [plan44 community forum](https://forum.plan44.ch/t/opensource-c-vdcd).
+3. contribute patches, report issues and suggest new functionality [on github](https://github.com/plan44/p44features) or in the [forum](https://forum.plan44.ch/t/opensource-c-vdcd).
+4. Create cool new *features*!
+5. Buy plan44.ch [products](https://plan44.ch/automation/products.php) - sales revenue is paying the time for contributing to opensource projects :-)
+
+(c) 2013-2022 by Lukas Zeller / [plan44.ch](https://www.plan44.ch/opensource.php)
