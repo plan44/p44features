@@ -8,7 +8,7 @@ p44features
 *p44features* needs some classes and functions from the [*p44utils*](https://github.com/plan44/p44utils) and [*p44lrgraphics*](https://github.com/plan44/p44lrgraphics) libraries.
 
 Projects using p44features (or cointaining roots that led to it) include 
-the [ETH digital platform](https://plan44.ch/custom#leth), the "chatty wifi" installation I brought to the 35c3, or the "hermeldon 2018" remote crocket playing installation (both in the [*hermel* branch of *lethd*](https://github.com/plan44/lethd/tree/hermeld)). At the time of writing, p44features are getting intergrated into the [vdcd](https://plan44.ch/opensource/vdcd) project, which allows for interesting augmentation of home automation systems.
+the [ETH digital platform](https://plan44.ch/custom#leth), the "chatty wifi" installation I brought to the 35c3, or the "hermeldon 2018" remote crocket playing installation (both in the [*hermel* branch of *lethd*](https://github.com/plan44/lethd/tree/hermeld)). The p44features are also integrated in the [vdcd](https://plan44.ch/opensource/vdcd) project, which allows for interesting augmentation of home automation and lighting systems.
 
 
 Usage
@@ -31,16 +31,16 @@ Features
 
 List of currently available features, will expand with each new project:
 
-- indicators: areas in a LED strip or matrix used as indicators with different styles
-- rfids: multiple cheap RFID readers as user-detecting "buttons"
-- dispmatrix: time synchronized LED matrix displays for large scrolling text display
-- inputs: use any GPIO, or pins of some i2c/spi based I/O extensions, or console keys for simulation, as generic inputs
-- light: simple PWM light dimmer
-- splitflaps: RS485 controlled splitflap display modules (as produced by Omega for Swiss Railways (SBB) and also other railways, such as Deutsche Bahn).
-- neuron: sensor triggered "conductance" light effect
-- mixloop: accelerometer triggered ball movement detector and light effect
-- wifitrack: visualizing WiFi SSIDs revealed to the public in probe requests
-- hermel: dual solenoid crocket playing driver
+- **indicators**: areas in a LED strip or matrix used as indicators with different styles
+- **rfids**: multiple cheap RFID readers as user-detecting "buttons"
+- **dispmatrix**: time synchronized LED matrix displays for large scrolling text display
+- **inputs**: use any GPIO, or pins of some i2c/spi based I/O extensions, or console keys for simulation, as generic inputs
+- **light**: simple PWM light dimmer
+- **splitflaps**: RS485 controlled splitflap display modules (as produced by Omega for Swiss Railways (SBB) and also other railways, such as Deutsche Bahn).
+- **neuron**: sensor triggered "conductance" light effect
+- **mixloop**: accelerometer triggered ball movement detector and light effect
+- **wifitrack**: visualizing WiFi SSIDs revealed to the public in probe requests
+- **hermel**: dual solenoid crocket playing driver
 
 
 Feature API
@@ -59,21 +59,21 @@ See below for examples
 
 ### global commands
 
-{ "cmd":"status" }
+`{ "cmd":"status" }`
 
 - get status of all features
 
-{ "event":{ ... } }
+`{ "event":{ ... } }`
 
 - inject an event (that might be processed by custom p44script on device).
 
 ### common to all features
 
-{ "cmd":"status", "feature": "*featurename*" }
+`{ "cmd":"status", "feature": "*featurename*" }`
 
 - get status of all features
 
-{ "logleveloffset":*offset*, "feature": "*featurename*" }
+`{ "logleveloffset":*offset*, "feature": "*featurename*" }`
 
 - set log level offset property for a feature (making its log more/less verbose)
 
@@ -82,7 +82,7 @@ See below for examples
 
 #### Initialisation
 
-{ "cmd":"init", "dispmatrix": { "installationX": *overall-x*, "installationY": *overall-y*, "rootview": *p44lrgraphics-view-config* }
+`{ "cmd":"init", "dispmatrix": { "installationX": *overall-x*, "installationY": *overall-y*, "rootview": *p44lrgraphics-view-config* }`
 
 - *x,y*: position of this p44feature unit in a longer scroller consisting of multiple p44feature based hardware units. This allows sending the same global scrolling offsets to all units, and each unit interprets it according to its position in the overall installation.
 - if no *p44lrgraphics-view-config* is specified, the root view will be set to a scroller labelled "DISPSCROLLER" filling the entire LEDarrangement. If a custom view config is passed, it should contain a scroller named "DISPSCROLLER".
@@ -90,7 +90,7 @@ See below for examples
 
 #### Start scrolling
 
-{ "feature":"dispmatrix", "cmd":"startscroll", "stepx":*x-step-size*, "stepy": *y-step-size*, "steps": *num-steps*, "interval": *step-interval-seconds*, "roundoffsets": *bool*, "start": *absolute_unix-time-in-seconds* }
+`{ "feature":"dispmatrix", "cmd":"startscroll", "stepx":*x-step-size*, "stepy": *y-step-size*, "steps": *num-steps*, "interval": *step-interval-seconds*, "roundoffsets": *bool*, "start": *absolute_unix-time-in-seconds* }`
 
 - step sizes can be fractional
 - *num-steps* can be negative for unlimited scrolling
@@ -99,27 +99,27 @@ See below for examples
 
 #### Stop scrolling
 
-{ "feature":"dispmatrix", "cmd":"stopscroll" }
+`{ "feature":"dispmatrix", "cmd":"stopscroll" }`
 
 #### Fade Alpha
 
-{ "feature":"dispmatrix", "cmd":"fade", "to": *target-alpha*, "t": *fade-time-in-seconds* }
+`{ "feature":"dispmatrix", "cmd":"fade", "to": *target-alpha*, "t": *fade-time-in-seconds* }`
 
 #### (Re)Configure a view
 
-{ "feature":"dispmatrix", "cmd":"configure", "view": *view-label*, "config": *p44lrgraphics-view-config* }
+`{ "feature":"dispmatrix", "cmd":"configure", "view": *view-label*, "config": *p44lrgraphics-view-config* }`
 
 #### Set a "scene"
 
-{ "feature":"dispmatrix", "scene":*p44lrgraphics-view-config* }
+`{ "feature":"dispmatrix", "scene":*p44lrgraphics-view-config* }`
 
 - Setting a scene means replacing the "DISPSCROLLER"'s scrolled view by a new view. This special command makes sure changing the scrolled view's works with wraparound scrolling over multiple modules.
 
 #### Set scroll offsets
 
-{ "feature":"dispmatrix", "offsetx":*offset-x* }
+`{ "feature":"dispmatrix", "offsetx":*offset-x* }`
 
-{ "feature":"dispmatrix", "offsetx":*offset-y* }
+`{ "feature":"dispmatrix", "offsetx":*offset-y* }`
 
 - This sets the content's scroll position, relative to the configured *installationX/Y* offsets
 
@@ -127,13 +127,13 @@ See below for examples
 
 #### Initialisation
 
-{ "cmd":"init", "indicators": { "rootview": *p44lrgraphics-view-config* }
+`{ "cmd":"init", "indicators": { "rootview": *p44lrgraphics-view-config* }`
 
 - if no *p44lrgraphics-view-config* is specified, the root view will be set to a stack labelled "INDICATORS" filling the entire LEDarrangement. If a custom view config is passed, it should contain a stack named "INDICATORS".
 
 #### Show an indicator
 
-{ "feature":"indicators", "cmd":"indicate", "x":*x-start*, "dx":*x-size*, "y":*y-start*, "dy":*y-size*, "effect":"*effect-name-or-viewconfig*", "t":*effect-duration-in-seconds*, "color":"*web-color*" }
+`{ "feature":"indicators", "cmd":"indicate", "x":*x-start*, "dx":*x-size*, "y":*y-start*, "dy":*y-size*, "effect":"*effect-name-or-viewconfig*", "t":*effect-duration-in-seconds*, "color":"*web-color*" }`
 
 - *effect-name-or-viewconfig* can be one of the built-in effects (at this time: "*plain*", "*swipe*", "*pulse*", "*spot*") or configuration of a view (including animations) to be shown at the specified coordinates. The view can be specified as inline JSON or via specifying the resource name of a resource file. A relative filename will be searched in the /indicators subdirectory of the app's resource directory.
 
@@ -142,7 +142,7 @@ See below for examples
 
 #### Initialisation
 
-{ "cmd":"init", "rfids": { "readers": [*index*, *index*,...], "pollinterval":*pollinterval_seconds*, "sameidtimeout":*re\_reporting\_timeout* "pauseafterdetect":*poll\_pause\_after\_card\_detected* }
+`{ "cmd":"init", "rfids": { "readers": [*index*, *index*,...], "pollinterval":*pollinterval_seconds*, "sameidtimeout":*re\_reporting\_timeout* "pauseafterdetect":*poll\_pause\_after\_card\_detected* }`
 
 - *index* are the physical bus addresses (0..23 in p44rfidctrl and p44rfidhat hardware) to select the reader. Depending on which readers on which cables are in use, this can be a sequence of numbers with or without gaps.
 - *pollinterval_seconds* is the  polling interval for the connected readers, i.e. how often every reader will be checked for the presence of a new RFID tag (default: 0.1 seconds)
@@ -152,7 +152,7 @@ See below for examples
 
 #### API events
 
-{ "feature":"rfids", "nUID":"*rfid_nUID*", "reader":*rfid\_reader\_index* }
+`{ "feature":"rfids", "nUID":"*rfid_nUID*", "reader":*rfid\_reader\_index* }`
 
 - *rfid_nUID* is the nUID of the RFID tag seen
 - *rfid\_reader\_index* is the physical bus address of the reader which has seen the RFID tag
@@ -162,10 +162,10 @@ See below for examples
 
 #### Initialisation
 
-{ "cmd":"init", "splitflaps": { "modules":[
+`{ "cmd":"init", "splitflaps": { "modules":[
     {"name":"*module_name*","addr":*module_address*,"type":"*hour|minute|40|62*"},
     ...
-] }}
+] }}`
 
 - The "modules" array defines the splitflaps to be used.
 - *name* is a handle for the module to access it with the *position* command later (see below).
@@ -174,7 +174,7 @@ See below for examples
 
 #### Set splitflap positions
 
-{ "feature":"splitflaps", "cmd":"position", "name":"*module_name*", "value":*flap_number* }
+`{ "feature":"splitflaps", "cmd":"position", "name":"*module_name*", "value":*flap_number* }`
 
 Sets the module that was named *module_name* at initialisation (see above) to position *flap_number*, starting at 0 for the first flap (in *42* und *60* type modules, and with hour 0/minute 00 for *hour* and *minute* type modules.
 
@@ -183,7 +183,7 @@ Sets the module that was named *module_name* at initialisation (see above) to po
 
 #### Initialisation
 
-{ "cmd":"init", "inputs": { "*input_name*":{ "pin":"*pin_spec*", "initially":*initial_bool*, "debouncing":*debounce\_in\_seconds*, "pollinterval":*pollinterval\_in\_seconds* } , ... } }
+`{ "cmd":"init", "inputs": { "*input_name*":{ "pin":"*pin_spec*", "initially":*initial_bool*, "debouncing":*debounce\_in\_seconds*, "pollinterval":*pollinterval\_in\_seconds* } , ... } }`
 
 - *input_name* is a name which is included in the API events to identify the input.
 - *pin_spec* is a p44utils DigitalIo pin specification
@@ -193,7 +193,7 @@ Sets the module that was named *module_name* at initialisation (see above) to po
 
 #### API events
 
-{ "feature":"inputs", "*input_name*":*input_value* }
+`{ "feature":"inputs", "*input_name*":*input_value* }`
 
 - *input_name* is a name of the input.
 - *input_value* is the current value of the input
