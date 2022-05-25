@@ -400,7 +400,7 @@ void Splitflaps::setModuleValue(uint8_t aModuleAddr, SbbModuleType aType, uint8_
   string poscmd = "\xFF\xC0";
   poscmd += (char)aModuleAddr;
   poscmd += (char)pos;
-  sendRawCommand(poscmd, 0, NULL);
+  sendRawCommand(poscmd, 0, NoOP);
 }
 
 

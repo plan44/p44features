@@ -299,20 +299,20 @@ ErrorPtr FeatureApi::call(ApiRequestPtr aRequest)
   o = reqData->get("script");
   if (o) {
     string scriptName = o->stringValue();
-    ErrorPtr err = runJsonFile(scriptName, NULL, NULL, &subst);
+    ErrorPtr err = runJsonFile(scriptName, NoOP, NULL, &subst);
     if (Error::isOK(err)) return Error::ok();
     return err;
   }
   o = reqData->get("scripttext");
   if (o) {
     string scriptText = o->stringValue();
-    ErrorPtr err = runJsonString(scriptText, NULL, NULL, &subst);
+    ErrorPtr err = runJsonString(scriptText, NoOP, NULL, &subst);
     if (Error::isOK(err)) return Error::ok();
     return err;
   }
   o = reqData->get("json");
   if (o) {
-    ErrorPtr err = executeJson(o, NULL, NULL);
+    ErrorPtr err = executeJson(o, NoOP, NULL);
     if (Error::isOK(err)) return Error::ok();
     return err;
   }

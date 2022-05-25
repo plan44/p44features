@@ -324,7 +324,7 @@ void MixLoop::accelMeasure()
       hitDetectorActive = true;
       #if ENABLE_LEGACY_FEATURE_SCRIPTS
       OLOG(LOG_NOTICE, "Hit detector activated with integral = %.0f", accelIntegral);
-      FeatureApi::sharedApi()->runJsonFile("scripts/game.json", NULL, &scriptContext);
+      FeatureApi::sharedApi()->runJsonFile("scripts/game.json", NoOP, &scriptContext);
       #endif
       JsonObjectPtr message = JsonObject::newObj();
       message->add("event", JsonObject::newString("activated"));
@@ -369,7 +369,7 @@ void MixLoop::showHit()
   showTicket.executeOnce(boost::bind(&MixLoop::showHitEnd, this), hitFlashTime);
   // disp
   #if ENABLE_LEGACY_FEATURE_SCRIPTS
-  FeatureApi::sharedApi()->runJsonFile("scripts/hit.json", NULL, &scriptContext);
+  FeatureApi::sharedApi()->runJsonFile("scripts/hit.json", NoOP, &scriptContext);
   #endif
   // report
   JsonObjectPtr message = JsonObject::newObj();
@@ -388,7 +388,7 @@ void MixLoop::dispNormal()
 {
   #if ENABLE_LEGACY_FEATURE_SCRIPTS
   dispTicket.cancel();
-  FeatureApi::sharedApi()->runJsonFile("scripts/normal.json", NULL, &scriptContext);
+  FeatureApi::sharedApi()->runJsonFile("scripts/normal.json", NoOP, &scriptContext);
   #endif
   // report
   JsonObjectPtr message = JsonObject::newObj();

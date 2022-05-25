@@ -1228,7 +1228,7 @@ void WifiTrack::displayEncounter(string aIntro, int aImageIndex, PixelColor aCol
       subst["HASTARGET"] = aTarget.size()>0 ? "1" : "0";
       subst["TARGET"] = aTarget;
       loadingContent = false; // because calling script will terminate previous script without callback, make sure loading is not kept in progress (would never get out)
-      FeatureApi::sharedApi()->runJsonFile("scripts/showssid.json", NULL, &scriptContext, &subst);
+      FeatureApi::sharedApi()->runJsonFile("scripts/showssid.json", NoOP, &scriptContext, &subst);
       #endif // ENABLE_LEGACY_FEATURE_SCRIPTS
     }
     else {

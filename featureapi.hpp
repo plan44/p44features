@@ -194,7 +194,7 @@ namespace p44 {
     /// @param aJsonCmds a single JSON command request or a array with multiple requests
     /// @param aFinishedCallback called when all commands are done
     /// @return ok or error
-    ErrorPtr executeJson(JsonObjectPtr aJsonCmds, SimpleCB aFinishedCallback = NULL, FeatureJsonScriptContextPtr* aContextP = NULL);
+    ErrorPtr executeJson(JsonObjectPtr aJsonCmds, SimpleCB aFinishedCallback = NoOP, FeatureJsonScriptContextPtr* aContextP = NULL);
 
     typedef map<string, string> SubstitutionMap;
 
@@ -205,13 +205,13 @@ namespace p44 {
     /// @param aFinishedCallback called when all commands are done
     /// @param aSubstitutionsP pointer to map of substitutions
     /// @return ok or error
-    ErrorPtr runJsonString(string aJsonString, SimpleCB aFinishedCallback = NULL, FeatureJsonScriptContextPtr* aContextP = NULL, SubstitutionMap* aSubstitutionsP = NULL);
+    ErrorPtr runJsonString(string aJsonString, SimpleCB aFinishedCallback = NoOP, FeatureJsonScriptContextPtr* aContextP = NULL, SubstitutionMap* aSubstitutionsP = NULL);
 
     /// execute JSON request(s) from a file
     /// @param aScriptPath resource dir relative (or absolute) path to script
     /// @param aFinishedCallback called when all commands are done
     /// @return ok or error
-    ErrorPtr runJsonFile(const string aScriptPath, SimpleCB aFinishedCallback = NULL, FeatureJsonScriptContextPtr* aContextP = NULL, SubstitutionMap* aSubstitutionsP = NULL);
+    ErrorPtr runJsonFile(const string aScriptPath, SimpleCB aFinishedCallback = NoOP, FeatureJsonScriptContextPtr* aContextP = NULL, SubstitutionMap* aSubstitutionsP = NULL);
 
     #endif // ENABLE_LEGACY_FEATURE_SCRIPTS
 
