@@ -84,7 +84,7 @@ WTPerson::WTPerson() :
 
 // MARK: ===== WifiTrack
 
-WifiTrack::WifiTrack(const string aMonitorIf, bool doStart) :
+WifiTrack::WifiTrack(const string aMonitorIf, int aRadiotapDBOffset, bool doStart) :
   inherited("wifitrack"),
   directDisplay(true),
   apiNotify(false),
@@ -94,6 +94,7 @@ WifiTrack::WifiTrack(const string aMonitorIf, bool doStart) :
   ouiNames(true),
   minShowInterval(3*Minute),
   minRssi(-80),
+  mRadiotapDBOffset(0x16), // correct value for mt76 on Openwrt 19.07, must be 0x1E on Openwrt 22.03
   reportSightings(false),
   aggregatePersons(true),
   scanBeacons(true),
@@ -109,6 +110,9 @@ WifiTrack::WifiTrack(const string aMonitorIf, bool doStart) :
   lastDataAutoSave(Never),
   loadingContent(false)
 {
+  if (aRadiotapDBOffset>0) {
+    mRadiotapDBOffset = aRadiotapDBOffset;
+  }
   // check for commandline-triggered standalone operation
   if (doStart) {
     initOperation();
@@ -131,6 +135,9 @@ ErrorPtr WifiTrack::initialize(JsonObjectPtr aInitData)
   }
   if (aInitData->get("apiNotify", o)) {
     apiNotify = o->boolValue();
+  }
+  if (aInitData->get("radiotapDBoffs", o)) {
+    mRadiotapDBOffset = o->int32Value();
   }
   initOperation();
   return Error::ok();
@@ -789,10 +796,10 @@ void WifiTrack::startScanner()
     else {
       string_format_append(cmd, " \\( type mgt subtype probe-req \\)");
     }
-    if (minRssi!=0) {
+    if (minRssi!=0 && mRadiotapDBOffset!=0) {
       uint16_t m = minRssi & 0xFF;
-      // Note: offset 0x16 into radio tap info to get rssi is specific to set of radio tap fields supported by the wifi driver
-      string_format_append(cmd, " and \\( radio[0x16] \\> 0x%02X \\)", m);
+      // Note: offset into radiotap to get rssi is specific to set of radio tap fields supported by the wifi driver
+      string_format_append(cmd, " and \\( radio[0x%x] \\> 0x%02X \\)", mRadiotapDBOffset , m);
     }
     #ifdef __APPLE__
     #warning "hardcoded access to mixloop/hermel/35c3 chatty wifi device"

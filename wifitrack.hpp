@@ -147,6 +147,7 @@ namespace p44 {
     int minRssi; ///< minimal rssi, will be passed to tcpdump as packet filter if not 0
     bool scanBeacons; ///< if set, beacons will be processed and remembered in addition to probe requests
     int minProcessRssi; ///< minimal rssi to process packet
+    int mRadiotapDBOffset; ///< offset of dBm info in radiotap date (dependent on wifi driver)
     int minShowRssi; ///< minimal rssi for triggering to show a person
     int tooCommonMacCount;
     int minCommonSsidCount;
@@ -166,7 +167,7 @@ namespace p44 {
 
   public:
 
-    WifiTrack(const string aMonitorIf, bool doStart);
+    WifiTrack(const string aMonitorIf, int aRadiotapDBOffset, bool doStart);
     virtual ~WifiTrack();
 
     /// initialize the feature

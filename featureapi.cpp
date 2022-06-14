@@ -678,7 +678,9 @@ void FeatureApi::addFeaturesFromCommandLine(LEDChainArrangementPtr aLedChainArra
   #if ENABLE_FEATURE_WIFITRACK
   // - wifitrack
   if (a->getIntOption("wifitrack", doStart)) {
-    sharedApi()->addFeature(FeaturePtr(new WifiTrack(a->getOption("wifimonif",""), doStart)));
+    int rtdbo = 0;
+    a->getIntOption("wifidboffs",rtdbo);
+    sharedApi()->addFeature(FeaturePtr(new WifiTrack(a->getOption("wifimonif",""), rtdbo, doStart)));
   }
   #endif
   #if ENABLE_FEATURE_HERMEL

@@ -363,7 +363,8 @@ namespace p44 {
   #if ENABLE_FEATURE_WIFITRACK
     #define FEATURE_WIFITRACK_CMDLINEOPTS \
       { 0  , "wifitrack",      true,  "doinit;enable wifitrack (and optionally init)" }, \
-      { 0  , "wifimonif",      true,  "interface;wifi monitoring interface to use" },
+      { 0  , "wifimonif",      true,  "interface;wifi monitoring interface to use" }, \
+      { 0  , "wifidboffs",     true,  "offset;offset into radiotap to get RSSi (driver dependent)" },
   #else
     #define FEATURE_WIFITRACK_CMDLINEOPTS
   #endif
