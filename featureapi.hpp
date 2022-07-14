@@ -5,18 +5,18 @@
 //
 //  This file is part of p44features.
 //
-//  pixelboardd is free software: you can redistribute it and/or modify
+//  p44features is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  pixelboardd is distributed in the hope that it will be useful,
+//  p44features is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
 //
 //  You should have received a copy of the GNU General Public License
-//  along with pixelboardd. If not, see <http://www.gnu.org/licenses/>.
+//  along with p44features. If not, see <http://www.gnu.org/licenses/>.
 //
 
 #ifndef __p44features_featureapi_hpp__
