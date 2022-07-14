@@ -330,6 +330,12 @@ namespace p44 {
   #else
     #define FEATURE_INPUTS_CMDLINEOPTS
   #endif
+  #if ENABLE_FEATURE_KEYEVENTS
+    #define FEATURE_KEYEVENTS_CMDLINEOPTS \
+      { 0  , "keyevents",      true, "eventdevice;enable (e.g. USB) keyboard event inputs" },
+  #else
+    #define FEATURE_KEYEVENTS_CMDLINEOPTS
+  #endif
   #if ENABLE_FEATURE_DISPMATRIX
     #define FEATURE_DISPMATRIX_CMDLINEOPTS \
       { 0  , "dispmatrix",     true,  "viewcfg|0;enable display matrix (and optionally init with viewcfg)" },
@@ -397,6 +403,7 @@ namespace p44 {
   #define P44FEATURE_CMDLINE_OPTIONS \
     FEATURE_LIGHT_CMDLINEOPTS \
     FEATURE_INPUTS_CMDLINEOPTS \
+    FEATURE_KEYEVENTS_CMDLINEOPTS \
     FEATURE_DISPMATRIX_CMDLINEOPTS \
     FEATURE_INDICATORS_CMDLINEOPTS \
     FEATURE_SPLITFLAPS_CMDLINEOPTS \

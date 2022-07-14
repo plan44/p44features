@@ -29,6 +29,9 @@
 #if ENABLE_FEATURE_INPUTS
   #include "inputs.hpp"
 #endif
+#if ENABLE_FEATURE_KEYEVENTS
+  #include "keyevents.hpp"
+#endif
 #if ENABLE_FEATURE_DISPMATRIX
   #include "dispmatrix.hpp"
 #endif
@@ -627,6 +630,12 @@ void FeatureApi::addFeaturesFromCommandLine(LEDChainArrangementPtr aLedChainArra
   // - inputs (instantiate only with command line option, as it allows free use of GPIOs etc.)
   if (a->getOption("inputs")) {
     sharedApi()->addFeature(FeaturePtr(new Inputs));
+  }
+  #endif
+  #if ENABLE_FEATURE_KEYEVENTS
+  // - keyboard events from linux input devices
+  if (a->getStringOption("keyevents", s)) {
+    sharedApi()->addFeature(FeaturePtr(new KeyEvents(s)));
   }
   #endif
   #if ENABLE_FEATURE_DISPMATRIX
