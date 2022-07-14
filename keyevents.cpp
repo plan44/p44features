@@ -23,6 +23,8 @@
 
 #include "application.hpp"
 
+#include <sys/ioctl.h>
+
 using namespace p44;
 
 #define FEATURE_NAME "keyevents"
@@ -30,16 +32,20 @@ using namespace p44;
 
 KeyEvents::KeyEvents(const string aInputDevice) :
   inherited(FEATURE_NAME),
-  mInputEventDevice(aInputDevice)
+  mInputEventDevice(aInputDevice),
+  mEventFd(-1)
 {
-  mEventStream.isMemberVariable();
   // must always be explicitly initialized
 }
 
 
 void KeyEvents::reset()
 {
-  mEventStream.stopMonitoringAndClose();
+  if (mEventFd>=0) {
+    MainLoop::currentMainLoop().unregisterPollHandler(mEventFd);
+    close(mEventFd);
+    mEventFd = -1;
+  }
   inherited::reset();
 }
 
@@ -84,33 +90,46 @@ struct input_event {
 void KeyEvents::initOperation()
 {
   reset();
-  int fd = open(mInputEventDevice.c_str(), O_RDONLY|O_NONBLOCK);
-  if (fd<0) {
+  mEventFd = open(mInputEventDevice.c_str(), O_RDONLY|O_NONBLOCK);
+  if (mEventFd<0) {
     ErrorPtr err = SysError::errNo();
     OLOG(LOG_ERR, "Cannot initialize: %s", Error::text(err));
   }
   else {
-    mEventStream.setFd(fd);
-    mEventStream.setReceiveHandler(boost::bind(&KeyEvents::eventDataHandler, this, _1));
+    MainLoop::currentMainLoop().registerPollHandler(mEventFd, POLLIN, boost::bind(&KeyEvents::eventDataHandler, this, _1, _2));
     OLOG(LOG_INFO, "expecting event packets of %lu bytes each from %s", sizeof(input_event), mInputEventDevice.c_str());
   }
   setInitialized();
 }
 
 
-void KeyEvents::eventDataHandler(ErrorPtr aError)
+bool KeyEvents::eventDataHandler(int aFD, int aPollFlags)
 {
   union {
     struct input_event ev;
     uint8_t bytes[sizeof(input_event)];
   } eventbuf;
 
-  if (Error::isOK(aError)) {
+  if (aPollFlags & POLLIN) {
     // get data
-    size_t n = mEventStream.numBytesReady();
-    while (n>=sizeof(input_event)) {
-      size_t b = mEventStream.receiveBytes(sizeof(input_event), eventbuf.bytes, aError);
-      if (Error::notOK(aError)) break;
+    ErrorPtr err;
+    DBGOLOG(LOG_DEBUG,"evendata poll handler with flags = 0x%x", aPollFlags);
+    ssize_t res = 1; // to get it started
+    while (true) {
+      res = read(aFD, eventbuf.bytes, sizeof(input_event));
+      if (res<0) {
+        // EAGAIN means no more events for now
+        if (errno!=EAGAIN) {
+          // real error
+          err = SysError::errNo();
+        }
+        break;
+      }
+      if (res<sizeof(input_event)) {
+        err = TextError::err("event read(%lu) only returns %zu bytes", sizeof(input_event), res);
+        break;
+      }
+      if (res==0) break; // done
       // decode event
       if (eventbuf.ev.type==EV_KEY) {
         // is a keyboard event. Check value: 0=release, 1=press, 2=autorepeat
@@ -123,13 +142,13 @@ void KeyEvents::eventDataHandler(ErrorPtr aError)
           sendEventMessage(message);
         }
       }
-      // try next
-      n -= b;
     }
+    if (Error::notOK(err)) {
+      OLOG(LOG_WARNING, "error reading event device: %s", Error::text(err));
+    }
+    return true; // processed some IO
   }
-  if (Error::notOK(aError)) {
-    OLOG(LOG_WARNING, "error reading event device: %s", Error::text(aError));
-  }
+  return false; // nothing processed, only checked flags
 }
 
 #endif // ENABLE_FEATURE_KEYEVENTS

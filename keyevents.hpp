@@ -35,7 +35,7 @@ namespace p44 {
     typedef Feature inherited;
 
     string mInputEventDevice;
-    FdComm mEventStream;
+    int mEventFd;
 
   public:
 
@@ -60,6 +60,10 @@ namespace p44 {
 
     void initOperation();
     void eventDataHandler(ErrorPtr aError);
+
+    /// @return should true if callback really handled some I/O, false if it only checked flags and found nothing to do
+    bool eventDataHandler(int aFD, int aPollFlags);
+
 
   };
 
