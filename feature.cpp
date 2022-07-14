@@ -107,8 +107,17 @@ static void status_func(BuiltinFunctionContextPtr f)
   f->finish(new JsonValue(ft->feature()->status()));
 }
 
+// reset()
+static void reset_func(BuiltinFunctionContextPtr f)
+{
+  FeatureObj* ft = dynamic_cast<FeatureObj*>(f->thisObj().get());
+  assert(ft);
+  ft->feature()->reset();
+  f->finish();
+}
+
 // init(json_config)
-static const BuiltInArgDesc init_args[] = { { json|object } };
+static const BuiltInArgDesc init_args[] = { { json|object|numeric } };
 static const size_t init_numargs = sizeof(init_args)/sizeof(BuiltInArgDesc);
 static void init_func(BuiltinFunctionContextPtr f)
 {
@@ -184,6 +193,7 @@ static void set_func(BuiltinFunctionContextPtr f)
 static const BuiltinMemberDescriptor featureMembers[] = {
   { "status", executable|json, 0, NULL, &status_func },
   { "init", executable|null|error, init_numargs, init_args, &init_func },
+  { "reset", executable|null|error, 0, NULL, &reset_func },
   { "cmd", executable|async|any|error, cmd_numargs, cmd_args, &cmd_func },
   { "set", executable|async|any|error, set_numargs, set_args, &set_func },
   { NULL } // terminator
