@@ -614,7 +614,11 @@ ErrorPtr FeatureApiError::err(const char *aFmt, ...)
 
 #if ENABLE_FEATURE_COMMANDLINE
 
-void FeatureApi::addFeaturesFromCommandLine(LEDChainArrangementPtr aLedChainArrangement)
+void FeatureApi::addFeaturesFromCommandLine(
+  #if ENABLE_LEDARRANGEMENT
+  LEDChainArrangementPtr aLedChainArrangement
+  #endif
+)
 {
   CmdLineApp* a = CmdLineApp::sharedCmdLineApp();
   string s;

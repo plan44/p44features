@@ -173,10 +173,14 @@ namespace p44 {
     /// @param aFeature the to add
     void addFeature(FeaturePtr aFeature);
 
+    #if ENABLE_LEDARRANGEMENT
     /// add features as specified on command line to the global sharedApi()
     /// @param aLedChainArrangement pass in the LED chain arrangement, if there is one
     ///   (needed for features based on p44lrgraphics)
     static void addFeaturesFromCommandLine(LEDChainArrangementPtr aLedChainArrangement);
+    #else
+    static void addFeaturesFromCommandLine();
+    #endif
 
     /// handle request
     /// @param aRequest the request to process
