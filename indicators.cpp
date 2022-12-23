@@ -54,6 +54,7 @@ Indicators::~Indicators()
 
 // MARK: ==== indicators API
 
+#define INDICATORS_VIEW_LABEL "INDICATORS"
 
 ErrorPtr Indicators::initialize(JsonObjectPtr aInitData)
 {
@@ -78,26 +79,45 @@ ErrorPtr Indicators::initialize(JsonObjectPtr aInitData)
     // get the ledChainArrangement's current rootview (possibly shared with other feature)
     P44ViewPtr rootView = mLedChainArrangement->getRootView();
     if (aInitData->get("rootview", o)) {
-      // configure the root view
-      err = rootView->configureFromResourceOrObj(o, FEATURE_NAME "/");
+      // create or re-configure the root view (such as adding a dedicated indicators view)
+      err = createViewFromResourceOrObj(o, FEATURE_NAME "/", rootView, nullptr);
     }
-    if (!rootView) {
-      // no existing or explicitly initialized rootview: install default viewstack as root
-      PixelRect r = mLedChainArrangement->totalCover();
-      mIndicatorsView = ViewStackPtr(new ViewStack);
-      mIndicatorsView->setFrame(r);
-      mIndicatorsView->setFullFrameContent();
-      mIndicatorsView->setBackgroundColor(black);
-      mIndicatorsView->setPositioningMode(P44View::noAdjust);
-      // the stack is also the root view
-      rootView = mIndicatorsView;
-    }
-    rootView->setDefaultLabel("INDICATORS");
     if (Error::isOK(err)) {
-      // install root view
-      mLedChainArrangement->setRootView(rootView);
-      // start running
+      string indicatorsLabel = INDICATORS_VIEW_LABEL;
+      if (aInitData->get("indicatorslabel", o)) {
+        indicatorsLabel = o->stringValue();
+      }
+      if (rootView) {
+        // indicators view might already exist in current root view hiearchy
+        mIndicatorsView = dynamic_pointer_cast<ViewStack>(rootView->getView(indicatorsLabel));
+      }
+      ViewStackPtr rootStack = dynamic_pointer_cast<ViewStack>(rootView);
+      if (!mIndicatorsView) {
+        if (rootStack) {
+          // just use root view stack
+          mIndicatorsView = rootStack;
+        }
+        else {
+          // no suitable root view at all, create one
+          PixelRect r = mLedChainArrangement->totalCover();
+          rootStack = ViewStackPtr(new ViewStack);
+          rootStack->setFrame(r);
+          rootStack->setFullFrameContent();
+          rootStack->setBackgroundColor(black);
+          rootStack->setPositioningMode(P44View::noAdjust);
+          rootStack->setDefaultLabel(indicatorsLabel); // set label
+          // inidcator view stack is the itself the root view
+          mIndicatorsView = rootStack;
+          // activate as root view
+          rootView = rootStack;
+          mLedChainArrangement->setRootView(rootView);
+        }
+      }
+      // now start
       initOperation();
+    }
+    else {
+      err = TextError::err("error creating or configuring root view");
     }
   }
   else {
@@ -252,8 +272,7 @@ void Indicators::effectDone(IndicatorEffectPtr aEffect)
 
 void Indicators::initOperation()
 {
-  if (mLedChainArrangement) {
-    mIndicatorsView = boost::dynamic_pointer_cast<ViewStack>(mLedChainArrangement->getRootView()->getView("INDICATORS"));
+  if (mLedChainArrangement && mIndicatorsView) {
     mLedChainArrangement->begin(true);
   }
   else {
