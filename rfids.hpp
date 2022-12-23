@@ -46,21 +46,21 @@ namespace p44 {
 
     typedef std::map<int,RFIDReader> RFIDReaderMap;
 
-    SPIDevicePtr spiDevice; ///< the generic SPI device where readers are connected
-    DigitalIoBusPtr readerSelectBus; ///< the bus to select a specific reader by index
-    DigitalIoPtr resetOutput; ///< common reset output
-    DigitalIoPtr irqInput; ///< common IRQ input
-    RFIDReaderMap rfidReaders; ///< the active RFID readers
+    SPIDevicePtr mSpiDevice; ///< the generic SPI device where readers are connected
+    DigitalIoBusPtr mReaderSelectBus; ///< the bus to select a specific reader by index
+    DigitalIoPtr mResetOutput; ///< common reset output
+    DigitalIoPtr mIrqInput; ///< common IRQ input
+    RFIDReaderMap mRfidReaders; ///< the active RFID readers
 
-    MLMicroSeconds rfidPollInterval; ///< poll interval
-    MLMicroSeconds sameIdTimeout; ///< how long the same ID will not get re-reported
-    MLMicroSeconds pollPauseAfterDetect; ///< how long polling pauses after a card detection (to free performance for effects...)
+    MLMicroSeconds mRfidPollInterval; ///< poll interval
+    MLMicroSeconds mSameIdTimeout; ///< how long the same ID will not get re-reported
+    MLMicroSeconds mPollPauseAfterDetect; ///< how long polling pauses after a card detection (to free performance for effects...)
 
-    MLTicket startupTimer; ///< timer for startup timing
-    bool pauseIrqHandling; ///< flag to suspend irq checking for a moment
+    MLTicket mStartupTimer; ///< timer for startup timing
+    bool mPauseIrqHandling; ///< flag to suspend irq checking for a moment
 
     #if POLLING_IRQ
-    MLTicket irqTimer; ///< timer for polling IRQ
+    MLTicket mIrqTimer; ///< timer for polling IRQ
     #endif
 
   public:

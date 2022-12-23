@@ -40,14 +40,14 @@ using namespace p44;
 
 RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, DigitalIoBusPtr aSelectBus, DigitalIoPtr aResetOutput, DigitalIoPtr aIRQInput) :
   inherited(FEATURE_NAME),
-  spiDevice(aSPIGenericDev),
-  readerSelectBus(aSelectBus),
-  resetOutput(aResetOutput),
-  irqInput(aIRQInput),
-  pauseIrqHandling(false),
-  rfidPollInterval(RFID_DEFAULT_POLL_INTERVAL),
-  sameIdTimeout(RFID_DEFAULT_SAME_ID_TIMEOUT),
-  pollPauseAfterDetect(RFID_POLL_PAUSE_AFTER_DETECT)
+  mSpiDevice(aSPIGenericDev),
+  mReaderSelectBus(aSelectBus),
+  mResetOutput(aResetOutput),
+  mIrqInput(aIRQInput),
+  mPauseIrqHandling(false),
+  mRfidPollInterval(RFID_DEFAULT_POLL_INTERVAL),
+  mSameIdTimeout(RFID_DEFAULT_SAME_ID_TIMEOUT),
+  mPollPauseAfterDetect(RFID_POLL_PAUSE_AFTER_DETECT)
 {
 
 }
@@ -57,8 +57,8 @@ RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, DigitalIoBusPtr aSelectBus, DigitalIoP
 void RFIDs::reset()
 {
   haltIrqHandling();
-  resetOutput->set(0); // put into reset, active low
-  rfidReaders.clear();
+  mResetOutput->set(0); // put into reset, active low
+  mRfidReaders.clear();
   inherited::reset();
 }
 
@@ -75,9 +75,9 @@ void RFIDs::selectReader(int aReaderIndex)
 {
   if (aReaderIndex==RFID522::Deselect) {
     // means highest index
-    aReaderIndex = readerSelectBus->getMaxBusValue();
+    aReaderIndex = mReaderSelectBus->getMaxBusValue();
   }
-  readerSelectBus->setBusValue(aReaderIndex);
+  mReaderSelectBus->setBusValue(aReaderIndex);
 }
 
 
@@ -89,26 +89,26 @@ ErrorPtr RFIDs::initialize(JsonObjectPtr aInitData)
   // { "cmd":"init", "rfids": { "pollinterval":0.1, "readers":[0,1,2,7,9,23] } }
   ErrorPtr err;
   JsonObjectPtr o;
-  if (spiDevice) {
+  if (mSpiDevice) {
     if (aInitData->get("pollinterval", o)) {
-      rfidPollInterval = o->doubleValue()*Second;
+      mRfidPollInterval = o->doubleValue()*Second;
     }
     if (aInitData->get("sameidtimeout", o)) {
-      sameIdTimeout = o->doubleValue()*Second;
+      mSameIdTimeout = o->doubleValue()*Second;
     }
     if (aInitData->get("pauseafterdetect", o)) {
-      pollPauseAfterDetect = o->doubleValue()*Second;
+      mPollPauseAfterDetect = o->doubleValue()*Second;
     }
     if (aInitData->get("readers", o)) {
       for (int i=0; i<o->arrayLength(); i++) {
         int readerIndex = o->arrayGet(i)->int32Value();
         RFIDReader rd;
-        rd.reader = RFID522Ptr(new RFID522(spiDevice, readerIndex, boost::bind(&RFIDs::selectReader, this, _1)));
-        rfidReaders[readerIndex] = rd;
+        rd.reader = RFID522Ptr(new RFID522(mSpiDevice, readerIndex, boost::bind(&RFIDs::selectReader, this, _1)));
+        mRfidReaders[readerIndex] = rd;
       }
     }
   }
-  if (rfidReaders.size()==0) {
+  if (mRfidReaders.size()==0) {
     err = TextError::err("no RFID readers configured");
   }
   if (Error::isOK(err)) {
@@ -129,7 +129,7 @@ JsonObjectPtr RFIDs::status()
 {
   JsonObjectPtr answer = inherited::status();
   if (answer->isType(json_type_object)) {
-    answer->add("activeReaders", JsonObject::newInt64(rfidReaders.size()));
+    answer->add("activeReaders", JsonObject::newInt64(mRfidReaders.size()));
   }
   return answer;
 }
@@ -151,15 +151,15 @@ void RFIDs::rfidDetected(int aReaderIndex, const string aRFIDnUID)
 void RFIDs::resetReaders(SimpleCB aDoneCB)
 {
   haltIrqHandling();
-  resetOutput->set(0); // assert reset = LOW
-  startupTimer.executeOnce(boost::bind(&RFIDs::releaseReset, this, aDoneCB), RESET_TIME);
+  mResetOutput->set(0); // assert reset = LOW
+  mStartupTimer.executeOnce(boost::bind(&RFIDs::releaseReset, this, aDoneCB), RESET_TIME);
 }
 
 
 void RFIDs::releaseReset(SimpleCB aDoneCB)
 {
-  resetOutput->set(1); // release reset = HIGH
-  startupTimer.executeOnce(boost::bind(&RFIDs::resetDone, this, aDoneCB), RESET_TIME);
+  mResetOutput->set(1); // release reset = HIGH
+  mStartupTimer.executeOnce(boost::bind(&RFIDs::resetDone, this, aDoneCB), RESET_TIME);
 }
 
 
@@ -178,27 +178,27 @@ void RFIDs::initOperation()
 
 void RFIDs::initReaders()
 {
-  for (RFIDReaderMap::iterator pos = rfidReaders.begin(); pos!=rfidReaders.end(); ++pos) {
+  for (RFIDReaderMap::iterator pos = mRfidReaders.begin(); pos!=mRfidReaders.end(); ++pos) {
     RFID522Ptr reader = pos->second.reader;
     OLOG(LOG_NOTICE, "- Enabling RFID522 reader address #%d", reader->getReaderIndex());
     reader->init();
   }
   // install IRQ
-  if (!POLLING_IRQ && irqInput)
+  if (!POLLING_IRQ && mIrqInput)
   {
-    if (!irqInput->setInputChangedHandler(boost::bind(&RFIDs::irqHandler, this, _1), 0, Never)) {
+    if (!mIrqInput->setInputChangedHandler(boost::bind(&RFIDs::irqHandler, this, _1), 0, Never)) {
       OLOG(LOG_ERR, "IRQ pin must have edge detection!");
     }
   }
   else {
     // just poll IRQ
-    pauseIrqHandling = false;
-    irqTimer.executeOnce(boost::bind(&RFIDs::pollIrq, this, _1), rfidPollInterval);
+    mPauseIrqHandling = false;
+    mIrqTimer.executeOnce(boost::bind(&RFIDs::pollIrq, this, _1), mRfidPollInterval);
   }
   // initialized now
   setInitialized();
   // start scanning for cards on all readers
-  for (RFIDReaderMap::iterator pos = rfidReaders.begin(); pos!=rfidReaders.end(); ++pos) {
+  for (RFIDReaderMap::iterator pos = mRfidReaders.begin(); pos!=mRfidReaders.end(); ++pos) {
     RFID522Ptr reader = pos->second.reader;
     FOCUSOLOG("Start probing on reader %d", reader->getReaderIndex());
     reader->probeTypeA(boost::bind(&RFIDs::detectedCard, this, reader, _1), true);
@@ -208,26 +208,26 @@ void RFIDs::initReaders()
 
 void RFIDs::haltIrqHandling()
 {
-  irqTimer.cancel();
-  pauseIrqHandling = true; // to exit IRQ loop and prevent retriggering timer
+  mIrqTimer.cancel();
+  mPauseIrqHandling = true; // to exit IRQ loop and prevent retriggering timer
 }
 
 
 void RFIDs::pollIrq(MLTimer &aTimer)
 {
   irqHandler(false); // assume active (LOW)
-  if (pauseIrqHandling) {
+  if (mPauseIrqHandling) {
     // prevent retriggering timer to allow pollPauseAfterDetect start immediately after card detection
-    pauseIrqHandling = false;
+    mPauseIrqHandling = false;
     return;
   }
-  MainLoop::currentMainLoop().retriggerTimer(aTimer, rfidPollInterval);
+  MainLoop::currentMainLoop().retriggerTimer(aTimer, mRfidPollInterval);
 }
 
 
 void RFIDs::irqHandler(bool aState)
 {
-  irqTimer.cancel();
+  mIrqTimer.cancel();
   if (aState) {
     // going high (inactive)
     FOCUSOLOG("--- RFIDs IRQ went inactive");
@@ -235,14 +235,14 @@ void RFIDs::irqHandler(bool aState)
   else {
     // going low (active)
     FOCUSOLOG("+++ RFIDs IRQ went ACTIVE -> calling irq handlers");
-    RFIDReaderMap::iterator pos = rfidReaders.begin();
+    RFIDReaderMap::iterator pos = mRfidReaders.begin();
     bool pending = false;
-    while (pos!=rfidReaders.end()) {
+    while (pos!=mRfidReaders.end()) {
       // let reader check IRQ
       if (pos->second.reader->irqHandler()) {
         pending = true;
       }
-      if (pauseIrqHandling) {
+      if (mPauseIrqHandling) {
         // exit loop to allow pollPauseAfterDetect start immediately after card detection
         break;
       }
@@ -282,17 +282,17 @@ void RFIDs::gotCardNUID(RFID522Ptr aReader, ErrorPtr aErr, const string aNUID)
       string_format_append(nUID, "%02X", (uint8_t)aNUID[i]);
     }
     OLOG(LOG_NOTICE, "Reader #%d: Card ID %s detected", aReader->getReaderIndex(), nUID.c_str());
-    RFIDReader& r = rfidReaders[aReader->getReaderIndex()];
+    RFIDReader& r = mRfidReaders[aReader->getReaderIndex()];
     MLMicroSeconds now = MainLoop::now();
-    if (r.lastNUID!=nUID || r.lastDetect==Never || r.lastDetect+sameIdTimeout<now ) {
+    if (r.lastNUID!=nUID || r.lastDetect==Never || r.lastDetect+mSameIdTimeout<now ) {
       r.lastDetect = now;
       r.lastNUID = nUID;
       #if POLLING_IRQ
-      if (pollPauseAfterDetect>0) {
+      if (mPollPauseAfterDetect>0) {
         // stop polling for now
         haltIrqHandling();
         // resume after a pause
-        irqTimer.executeOnce(boost::bind(&RFIDs::pollIrq, this, _1), pollPauseAfterDetect);
+        mIrqTimer.executeOnce(boost::bind(&RFIDs::pollIrq, this, _1), mPollPauseAfterDetect);
       }
       #endif
       rfidDetected(aReader->getReaderIndex(), nUID);
