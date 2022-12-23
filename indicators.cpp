@@ -32,7 +32,7 @@ using namespace p44;
 
 Indicators::Indicators(LEDChainArrangementPtr aLedChainArrangement) :
   inherited(FEATURE_NAME),
-  ledChainArrangement(aLedChainArrangement)
+  mLedChainArrangement(aLedChainArrangement)
 {
 }
 
@@ -40,8 +40,8 @@ Indicators::Indicators(LEDChainArrangementPtr aLedChainArrangement) :
 void Indicators::reset()
 {
   stop();
-  if (ledChainArrangement) ledChainArrangement->end();
-  if (indicatorsView) indicatorsView.reset();
+  if (mLedChainArrangement) mLedChainArrangement->end();
+  if (mIndicatorsView) mIndicatorsView.reset();
   inherited::reset();
 }
 
@@ -63,39 +63,39 @@ ErrorPtr Indicators::initialize(JsonObjectPtr aInitData)
   // { "cmd":"init", "indicators": { "ledchains": [ "ledchainspec1", "ledchainspec2", ... ], "rootview": <p44lrgraphics-view-config> } }
   ErrorPtr err;
   JsonObjectPtr o;
-  if (ledChainArrangement) {
+  if (mLedChainArrangement) {
     if (aInitData->get("ledchains", o)) {
       // ledchain re-arrangement from config
       // - forget default arrangement
-      ledChainArrangement->removeAllChains();
+      mLedChainArrangement->removeAllChains();
       // - add chains from array of strings
       for (int i=0; i<o->arrayLength(); ++i) {
         JsonObjectPtr ao = o->arrayGet(i);
-        ledChainArrangement->addLEDChain(ao->stringValue());
+        mLedChainArrangement->addLEDChain(ao->stringValue());
       }
-      ledChainArrangement->startChains(); // start chains that are not yet operating
+      mLedChainArrangement->startChains(); // start chains that are not yet operating
     }
     // get the ledChainArrangement's current rootview (possibly shared with other feature)
-    P44ViewPtr rootView = ledChainArrangement->getRootView();
+    P44ViewPtr rootView = mLedChainArrangement->getRootView();
     if (aInitData->get("rootview", o)) {
       // configure the root view
       err = rootView->configureFromResourceOrObj(o, FEATURE_NAME "/");
     }
     if (!rootView) {
       // no existing or explicitly initialized rootview: install default viewstack as root
-      PixelRect r = ledChainArrangement->totalCover();
-      indicatorsView = ViewStackPtr(new ViewStack);
-      indicatorsView->setFrame(r);
-      indicatorsView->setFullFrameContent();
-      indicatorsView->setBackgroundColor(black);
-      indicatorsView->setPositioningMode(P44View::noAdjust);
+      PixelRect r = mLedChainArrangement->totalCover();
+      mIndicatorsView = ViewStackPtr(new ViewStack);
+      mIndicatorsView->setFrame(r);
+      mIndicatorsView->setFullFrameContent();
+      mIndicatorsView->setBackgroundColor(black);
+      mIndicatorsView->setPositioningMode(P44View::noAdjust);
       // the stack is also the root view
-      rootView = indicatorsView;
+      rootView = mIndicatorsView;
     }
     rootView->setDefaultLabel("INDICATORS");
     if (Error::isOK(err)) {
       // install root view
-      ledChainArrangement->setRootView(rootView);
+      mLedChainArrangement->setRootView(rootView);
       // start running
       initOperation();
     }
@@ -118,8 +118,8 @@ ErrorPtr Indicators::processRequest(ApiRequestPtr aRequest)
     //  minimally: { cmd: "indicate" } /* full area */
     //  normally: { cmd: "indicate", x:0, dx:20, effect="swipe" }
     //  full: { cmd: "indicate", x:0, dx:20, y:0, dy:1, effect:"pulse", t:1 }
-    if (cmd=="indicate" && indicatorsView) {
-      PixelRect f = indicatorsView->getContent(); // default to full view
+    if (cmd=="indicate" && mIndicatorsView) {
+      PixelRect f = mIndicatorsView->getContent(); // default to full view
       // common parameters
       if (data->get("x", o)) f.x = o->int32Value();
       if (data->get("y", o)) f.y = o->int32Value();
@@ -182,7 +182,7 @@ ErrorPtr Indicators::processRequest(ApiRequestPtr aRequest)
         viewCfg->add("y", JsonObject::newInt32(f.y));
         viewCfg->add("dx", JsonObject::newInt32(f.dx));
         viewCfg->add("dy", JsonObject::newInt32(f.dy));
-        err = p44::createViewFromConfig(viewCfg, effectView, indicatorsView);
+        err = p44::createViewFromConfig(viewCfg, effectView, mIndicatorsView);
         if (Error::notOK(err)) return err;
       }
       if (!effectView) return TextError::err("No valid indicator effect");
@@ -208,7 +208,7 @@ JsonObjectPtr Indicators::status()
 {
   JsonObjectPtr answer = inherited::status();
   if (answer->isType(json_type_object)) {
-    answer->add("activeIndicators", JsonObject::newInt64(activeIndicators.size()));
+    answer->add("activeIndicators", JsonObject::newInt64(mActiveIndicators.size()));
   }
   return answer;
 }
@@ -218,43 +218,43 @@ JsonObjectPtr Indicators::status()
 
 void Indicators::stop()
 {
-  for (EffectsList::iterator pos = activeIndicators.begin(); pos!=activeIndicators.end(); ++pos) {
+  for (EffectsList::iterator pos = mActiveIndicators.begin(); pos!=mActiveIndicators.end(); ++pos) {
     IndicatorEffectPtr eff = *pos;
-    eff->ticket.cancel();
-    indicatorsView->removeView(eff->view);
+    eff->mTicket.cancel();
+    mIndicatorsView->removeView(eff->mView);
   }
-  activeIndicators.clear();
+  mActiveIndicators.clear();
 }
 
 
 void Indicators::runEffect(P44ViewPtr aView, MLMicroSeconds aDuration, JsonObjectPtr aConfig)
 {
   OLOG(LOG_INFO, "Starting effect");
-  indicatorsView->pushView(aView);
+  mIndicatorsView->pushView(aView);
   IndicatorEffectPtr effect = IndicatorEffectPtr(new IndicatorEffect);
-  effect->view = aView;
+  effect->mView = aView;
   // and make sure it gets cleaned up after given time
-  effect->ticket.executeOnce(boost::bind(&Indicators::effectDone, this, effect), aDuration);
-  activeIndicators.push_back(effect);
-  indicatorsView->requestUpdate();
+  effect->mTicket.executeOnce(boost::bind(&Indicators::effectDone, this, effect), aDuration);
+  mActiveIndicators.push_back(effect);
+  mIndicatorsView->requestUpdate();
 }
 
 
 void Indicators::effectDone(IndicatorEffectPtr aEffect)
 {
-  aEffect->view->stopAnimations();
-  indicatorsView->removeView(aEffect->view);
-  activeIndicators.remove(aEffect);
-  indicatorsView->requestUpdate();
+  aEffect->mView->stopAnimations();
+  mIndicatorsView->removeView(aEffect->mView);
+  mActiveIndicators.remove(aEffect);
+  mIndicatorsView->requestUpdate();
   OLOG(LOG_INFO, "Effect Done");
 }
 
 
 void Indicators::initOperation()
 {
-  if (ledChainArrangement) {
-    indicatorsView = boost::dynamic_pointer_cast<ViewStack>(ledChainArrangement->getRootView()->getView("INDICATORS"));
-    ledChainArrangement->begin(true);
+  if (mLedChainArrangement) {
+    mIndicatorsView = boost::dynamic_pointer_cast<ViewStack>(mLedChainArrangement->getRootView()->getView("INDICATORS"));
+    mLedChainArrangement->begin(true);
   }
   else {
     OLOG(LOG_WARNING, "NOP: no ledchain connected");

@@ -32,8 +32,8 @@ namespace p44 {
   class IndicatorEffect : public P44Obj
   {
   public:
-    MLTicket ticket;
-    P44ViewPtr view;
+    MLTicket mTicket;
+    P44ViewPtr mView;
   };
   typedef boost::intrusive_ptr<IndicatorEffect> IndicatorEffectPtr;
 
@@ -42,11 +42,11 @@ namespace p44 {
   {
     typedef Feature inherited;
 
-    LEDChainArrangementPtr ledChainArrangement;
-    ViewStackPtr indicatorsView; // the view to put indicators onto
+    LEDChainArrangementPtr mLedChainArrangement;
+    ViewStackPtr mIndicatorsView; // the view to put indicators onto
 
     typedef std::list<IndicatorEffectPtr> EffectsList;
-    EffectsList activeIndicators;
+    EffectsList mActiveIndicators;
 
   public:
 
