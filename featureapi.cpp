@@ -651,7 +651,7 @@ void FeatureApi::addFeaturesFromCommandLine(
   #if ENABLE_FEATURE_INDICATORS
   // - indicators
   if (a->getOption("indicators")) {
-    if (aLedChainArrangement) sharedApi()->addFeature(FeaturePtr(new Indicators(aLedChainArrangement  )));
+    if (aLedChainArrangement) sharedApi()->addFeature(FeaturePtr(new Indicators(aLedChainArrangement)));
   }
   #endif
   #if ENABLE_FEATURE_RFIDS
@@ -873,7 +873,8 @@ FeatureApiLookup::FeatureApiLookup() :
 // static helper for implementing calls
 void FeatureApiLookup::featureCallDone(BuiltinFunctionContextPtr f, JsonObjectPtr aResult, ErrorPtr aError)
 {
-  if (aError) {
+  // Note: do not report Error::OK as error
+  if (Error::notOK(aError)) {
     f->finish(new ErrorValue(aError));
     return;
   }
