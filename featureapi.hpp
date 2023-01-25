@@ -50,16 +50,16 @@ namespace p44 {
   class ApiRequest : public P44Obj
   {
 
-    JsonObjectPtr request;
+    JsonObjectPtr mRequest;
 
   public:
 
-    ApiRequest(JsonObjectPtr aRequest) : request(aRequest) {};
+    ApiRequest(JsonObjectPtr aRequest) : mRequest(aRequest) {};
     virtual ~ApiRequest() {};
 
     /// get the request to process
     /// @return get the request JSON object
-    JsonObjectPtr getRequest() { return request; }
+    JsonObjectPtr getRequest() { return mRequest; }
 
     /// send response
     /// @param aResponse JSON response to send
@@ -72,7 +72,7 @@ namespace p44 {
   class FeatureApiRequest : public ApiRequest
   {
     typedef ApiRequest inherited;
-    JsonCommPtr connection;
+    JsonCommPtr mConnection;
 
   public:
 
@@ -111,7 +111,7 @@ namespace p44 {
   {
     typedef ApiRequest inherited;
 
-    RequestDoneCB requestDoneCB;
+    RequestDoneCB mRequestDoneCB;
 
   public:
 
@@ -146,15 +146,15 @@ namespace p44 {
   {
     friend class FeatureApiRequest;
 
-    SocketCommPtr apiServer;
-    JsonCommPtr connection;
+    SocketCommPtr mApiServer;
+    JsonCommPtr mConnection;
 
     typedef std::map<string, FeaturePtr> FeatureMap;
-    FeatureMap featureMap;
+    FeatureMap mFeatureMap;
 
-    string devicelabel;
+    string mDevicelabel;
 
-    MLTicket scriptTicket;
+    MLTicket mScriptTicket;
 
   public:
 

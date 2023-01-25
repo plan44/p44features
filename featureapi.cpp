@@ -69,7 +69,7 @@ using namespace p44;
 
 FeatureApiRequest::FeatureApiRequest(JsonObjectPtr aRequest, JsonCommPtr aConnection) :
   inherited(aRequest),
-  connection(aConnection)
+  mConnection(aConnection)
 {
 }
 
@@ -85,7 +85,7 @@ void FeatureApiRequest::sendResponse(JsonObjectPtr aResponse, ErrorPtr aError)
     aResponse = JsonObject::newObj();
     aResponse->add("Error", JsonObject::newString(aError->description()));
   }
-  if (connection) connection->sendMessage(aResponse);
+  if (mConnection) mConnection->sendMessage(aResponse);
   SOLOG(*FeatureApi::sharedApi(), LOG_INFO,"answer: %s", aResponse->c_strValue());
 }
 
@@ -116,7 +116,7 @@ void InternalRequest::sendResponse(JsonObjectPtr aResponse, ErrorPtr aError)
 
 APICallbackRequest::APICallbackRequest(JsonObjectPtr aRequest, RequestDoneCB aRequestDoneCB) :
   inherited(aRequest),
-  requestDoneCB(aRequestDoneCB)
+  mRequestDoneCB(aRequestDoneCB)
 {
 }
 
@@ -128,7 +128,7 @@ APICallbackRequest::~APICallbackRequest()
 
 void APICallbackRequest::sendResponse(JsonObjectPtr aResponse, ErrorPtr aError)
 {
-  if (requestDoneCB) requestDoneCB(aResponse, aError);
+  if (mRequestDoneCB) mRequestDoneCB(aResponse, aError);
 }
 
 
@@ -331,8 +331,8 @@ ErrorPtr FeatureApi::call(ApiRequestPtr aRequest)
 
 FeaturePtr FeatureApi::getFeature(const string aFeatureName)
 {
-  FeatureMap::iterator pos = featureMap.find(aFeatureName);
-  if (pos==featureMap.end()) return FeaturePtr();
+  FeatureMap::iterator pos = mFeatureMap.find(aFeatureName);
+  if (pos==mFeatureMap.end()) return FeaturePtr();
   return pos->second;
 }
 
@@ -341,7 +341,7 @@ FeaturePtr FeatureApi::getFeature(const string aFeatureName)
 
 void FeatureApi::addFeature(FeaturePtr aFeature)
 {
-  featureMap[aFeature->getName()] = aFeature;
+  mFeatureMap[aFeature->getName()] = aFeature;
 }
 
 
@@ -351,7 +351,7 @@ SocketCommPtr FeatureApi::apiConnectionHandler(SocketCommPtr aServerSocketComm)
   conn->setMessageHandler(boost::bind(&FeatureApi::apiRequestHandler, this, conn, _1, _2));
   conn->setClearHandlersAtClose(); // close must break retain cycles so this object won't cause a mem leak
 
-  connection = conn;
+  mConnection = conn;
   return conn;
 }
 
@@ -395,8 +395,16 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
       return FeatureApiError::err("'feature' attribute must be a string");
     }
     string featurename = o->stringValue();
-    FeatureMap::iterator f = featureMap.find(featurename);
-    if (f==featureMap.end()) {
+    FeatureMap::iterator f = mFeatureMap.find(featurename);
+    if (f==mFeatureMap.end()) {
+      #if ENABLE_P44SCRIPT
+      if (mUnhandledRequestSource.hasSinks()) {
+        OLOG(LOG_NOTICE, "call for internally unknown feature '%s' -> let script check", featurename.c_str());
+        // let scripted feature handler process unknown feature
+        mUnhandledRequestSource.sendEvent(new FeatureRequestObj(aRequest));
+        return ErrorPtr(); // no default response, event handler must send it
+      }
+      #endif
       return FeatureApiError::err("unknown feature '%s'", featurename.c_str());
     }
     if (!f->second->isInitialized()) {
@@ -458,6 +466,8 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
     }
     #if ENABLE_P44SCRIPT
     else if (mUnhandledRequestSource.hasSinks()) {
+      OLOG(LOG_NOTICE, "call for internally unknown cmd '%s' -> let script check", cmd.c_str());
+      // let scripted feature handler process unknown command
       mUnhandledRequestSource.sendEvent(new FeatureRequestObj(aRequest));
       return ErrorPtr(); // no default response, event handler must send it
     }
@@ -472,7 +482,7 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
 ErrorPtr FeatureApi::reset(ApiRequestPtr aRequest)
 {
   bool featureFound = false;
-  for (FeatureMap::iterator f = featureMap.begin(); f!=featureMap.end(); ++f) {
+  for (FeatureMap::iterator f = mFeatureMap.begin(); f!=mFeatureMap.end(); ++f) {
     if (aRequest->getRequest()->get(f->first.c_str())) {
       featureFound = true;
       OLOG(LOG_NOTICE, "resetting feature '%s'", f->first.c_str());
@@ -494,9 +504,9 @@ ErrorPtr FeatureApi::init(ApiRequestPtr aRequest)
   JsonObjectPtr reqData = aRequest->getRequest();
   JsonObjectPtr o = reqData->get("devicelabel");
   if (o) {
-    devicelabel = o->stringValue();
+    mDevicelabel = o->stringValue();
   }
-  for (FeatureMap::iterator f = featureMap.begin(); f!=featureMap.end(); ++f) {
+  for (FeatureMap::iterator f = mFeatureMap.begin(); f!=mFeatureMap.end(); ++f) {
     JsonObjectPtr initData = reqData->get(f->first.c_str());
     if (initData) {
       featureFound = true;
@@ -510,6 +520,14 @@ ErrorPtr FeatureApi::init(ApiRequestPtr aRequest)
     }
   }
   if (!featureFound) {
+    #if ENABLE_P44SCRIPT
+    if (mUnhandledRequestSource.hasSinks()) {
+      OLOG(LOG_NOTICE, "init does not address any internal feature -> let script check");
+      // let scripted feature handler process unknown feature initialisation
+      mUnhandledRequestSource.sendEvent(new FeatureRequestObj(aRequest));
+      return ErrorPtr(); // no default response, event handler must send it
+    }
+    #endif
     return FeatureApiError::err("init does not address any known features");
   }
   return Error::ok(); // cause empty response
@@ -530,12 +548,12 @@ ErrorPtr FeatureApi::status(ApiRequestPtr aRequest)
   JsonObjectPtr answer = JsonObject::newObj();
   // - list initialized features
   JsonObjectPtr features = JsonObject::newObj();
-  for (FeatureMap::iterator f = featureMap.begin(); f!=featureMap.end(); ++f) {
+  for (FeatureMap::iterator f = mFeatureMap.begin(); f!=mFeatureMap.end(); ++f) {
     features->add(f->first.c_str(), f->second->status());
   }
   answer->add("features", features);
   // - grid coordinate
-  answer->add("devicelabel", JsonObject::newString(devicelabel));
+  answer->add("devicelabel", JsonObject::newString(mDevicelabel));
   // - MAC address and IPv4
   answer->add("macaddress", JsonObject::newString(macAddressToString(macAddress(), ':')));
   answer->add("ipv4", JsonObject::newString(ipv4ToString(ipv4Address())));
@@ -558,10 +576,10 @@ ErrorPtr FeatureApi::ping(ApiRequestPtr aRequest)
 
 void FeatureApi::start(const string aApiPort)
 {
-  apiServer = SocketCommPtr(new SocketComm(MainLoop::currentMainLoop()));
-  apiServer->setConnectionParams(NULL, aApiPort.c_str(), SOCK_STREAM, AF_INET6);
-  apiServer->setAllowNonlocalConnections(true);
-  apiServer->startServer(boost::bind(&FeatureApi::apiConnectionHandler, this, _1), 10);
+  mApiServer = SocketCommPtr(new SocketComm(MainLoop::currentMainLoop()));
+  mApiServer->setConnectionParams(NULL, aApiPort.c_str(), SOCK_STREAM, AF_INET6);
+  mApiServer->setAllowNonlocalConnections(true);
+  mApiServer->startServer(boost::bind(&FeatureApi::apiConnectionHandler, this, _1), 10);
   OLOG(LOG_INFO, "listening on port %s", aApiPort.c_str());
 }
 
@@ -585,11 +603,11 @@ void FeatureApi::sendEventMessageInternally(JsonObjectPtr aEventMessage)
 
 void FeatureApi::sendEventMessageToApiClient(JsonObjectPtr aEventMessage)
 {
-  if (!connection) {
+  if (!mConnection) {
     OLOG(LOG_INFO, "no API connection, event message not sent out: %s", JsonObject::text(aEventMessage));
     return;
   }
-  ErrorPtr err = connection->sendMessage(aEventMessage);
+  ErrorPtr err = mConnection->sendMessage(aEventMessage);
   if (Error::notOK(err)) {
     OLOG(LOG_ERR, "Error sending message: %s", err->text());
   }
