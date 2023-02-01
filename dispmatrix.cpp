@@ -51,7 +51,7 @@ DispMatrix::DispMatrix(LEDChainArrangementPtr aLedChainArrangement, const string
   // create the root view
   if (ledChainArrangement) {
     // check for commandline-triggered standalone operation, adding views from config
-    if (aViewCfgStr!="0") {
+    if (aViewCfgStr!="0" && aViewCfgStr!="none") {
       // json root view config or name of resource json file
       ErrorPtr err;
       JsonObjectPtr cfg = Application::jsonObjOrResource(aViewCfgStr, &err, FEATURE_NAME "/");
@@ -83,6 +83,7 @@ DispMatrix::~DispMatrix()
 
 // MARK: ==== dispmatrix API
 
+#define DISPSCROLLER_LABEL "DISPSCROLLER"
 
 ErrorPtr DispMatrix::initialize(JsonObjectPtr aInitData)
 {
@@ -116,19 +117,25 @@ ErrorPtr DispMatrix::initialize(JsonObjectPtr aInitData)
       // create/replace or reconfigure rootview (depending on having 'type' in the config)
       err = createViewFromResourceOrObj(o, FEATURE_NAME "/", rootView, P44ViewPtr());
     }
-    if (!rootView) {
+    if (rootView) {
+      // there is a rootview, it should contain a scroller
+      dispScroller = boost::dynamic_pointer_cast<ViewScroller>(rootView->getView(DISPSCROLLER_LABEL));
+    }
+    else {
       // no existing or explicitly initialized rootview: install default scroller as root
       PixelRect r = ledChainArrangement->totalCover();
       dispScroller = ViewScrollerPtr(new ViewScroller);
       dispScroller->setFrame(r);
       dispScroller->setFullFrameContent();
       dispScroller->setBackgroundColor(black); // stack with black background is more efficient (and there's nothing below, anyway)
-      dispScroller->setOffsetX(installationOffsetX);
-      dispScroller->setOffsetY(installationOffsetY);
+      dispScroller->setDefaultLabel(DISPSCROLLER_LABEL);
       // the scroller is the root view
       rootView = dispScroller;
     }
-    rootView->setDefaultLabel("DISPSCROLLER");
+    if (dispScroller) {
+      dispScroller->setOffsetX(installationOffsetX);
+      dispScroller->setOffsetY(installationOffsetY);
+    }
     if (Error::isOK(err)) {
       // install root view
       ledChainArrangement->setRootView(rootView);
@@ -338,7 +345,6 @@ JsonObjectPtr DispMatrix::status()
 void DispMatrix::initOperation()
 {
   if (ledChainArrangement) {
-    dispScroller = boost::dynamic_pointer_cast<ViewScroller>(rootView->getView("DISPSCROLLER"));
     ledChainArrangement->begin(true);
   }
   else {
