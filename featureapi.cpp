@@ -825,7 +825,7 @@ const ScriptObjPtr FeatureRequestObj::memberByName(const string aName, TypeInfo 
 
 // featureevent(json)    send a feature event
 // featureevent()        return feature event (only returns something in a trigger expressions, NULL otherwise)
-static const BuiltInArgDesc featureevent_args[] = { { json|structured|optionalarg } };
+static const BuiltInArgDesc featureevent_args[] = { { structured|optionalarg } };
 static const size_t featureevent_numargs = sizeof(featureevent_args)/sizeof(BuiltInArgDesc);
 static void featureevent_func(BuiltinFunctionContextPtr f)
 {
@@ -843,7 +843,7 @@ static void featureevent_func(BuiltinFunctionContextPtr f)
 
 // featurecall(json)      send a feature api call/request (for local processing)
 // featurecall()          return unhandled feature api call (only returns something in a trigger expressions, NULL otherwise)
-static const BuiltInArgDesc featurecall_args[] = { { json|object|optionalarg } };
+static const BuiltInArgDesc featurecall_args[] = { { object|optionalarg } };
 static const size_t featurecall_numargs = sizeof(featurecall_args)/sizeof(BuiltInArgDesc);
 static void featurecall_func(BuiltinFunctionContextPtr f)
 {
@@ -879,8 +879,8 @@ static void feature_func(BuiltinFunctionContextPtr f)
 
 static const BuiltinMemberDescriptor featureApiGlobals[] = {
   { "feature", executable|any, feature_numargs, feature_args, &feature_func },
-  { "featurecall", executable|json|null, featurecall_numargs, featurecall_args, &featurecall_func },
-  { "featureevent", executable|json|null, featureevent_numargs, featureevent_args, &featureevent_func },
+  { "featurecall", executable|value|null, featurecall_numargs, featurecall_args, &featurecall_func },
+  { "featureevent", executable|value|null, featureevent_numargs, featureevent_args, &featureevent_func },
   { NULL } // terminator
 };
 
