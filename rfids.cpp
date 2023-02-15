@@ -41,6 +41,9 @@ using namespace p44;
 
 RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, DigitalIoBusPtr aSelectBus, DigitalIoPtr aResetOutput, DigitalIoPtr aIRQInput) :
   inherited(FEATURE_NAME),
+  #if IN_THREAD
+  mUsePollingThread(false),
+  #endif
   mSpiDevice(aSPIGenericDev),
   mReaderSelectBus(aSelectBus),
   mResetOutput(aResetOutput),
@@ -57,9 +60,16 @@ RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, DigitalIoBusPtr aSelectBus, DigitalIoP
 
 void RFIDs::reset()
 {
-  haltIrqHandling();
-  mResetOutput->set(0); // put into reset, active low
-  mRfidReaders.clear();
+  OLOG(LOG_INFO,"Received reset command, request RFID polling termination")
+  #if IN_THREAD
+  if (mRfidPollingThread) {
+    // make terminate (will do in background)
+    mRfidPollingThread->terminate();
+    inherited::reset();
+    return;
+  }
+  #endif
+  stopReaders();
   inherited::reset();
 }
 
@@ -108,6 +118,11 @@ ErrorPtr RFIDs::initialize(JsonObjectPtr aInitData)
         mRfidReaders[readerIndex] = rd;
       }
     }
+    #if IN_THREAD
+    if (aInitData->get("pollingthread", o)) {
+      mUsePollingThread = o->boolValue();
+    }
+    #endif
   }
   if (mRfidReaders.size()==0) {
     err = TextError::err("no RFID readers configured");
@@ -141,6 +156,16 @@ void RFIDs::rfidDetected(int aReaderIndex, const string aRFIDnUID)
   JsonObjectPtr message = JsonObject::newObj();
   message->add("nUID", JsonObject::newString(aRFIDnUID));
   message->add("reader", JsonObject::newInt32(aReaderIndex));
+  #if IN_THREAD
+  if (mUsePollingThread && mRfidPollingThread) {
+    // detections runs in separate thread, must notify parent thread
+    pthread_mutex_lock(&mReportMutex);
+    mDetectionMessage = message;
+    pthread_mutex_unlock(&mReportMutex);
+    mRfidPollingThread->signalParentThread(threadSignalUserSignal);
+    return;
+  }
+  #endif
   sendEventMessage(message);
 }
 
@@ -172,9 +197,69 @@ void RFIDs::resetDone(SimpleCB aDoneCB)
 
 void RFIDs::initOperation()
 {
-  OLOG(LOG_NOTICE, "- Resetting all readers");
+  #if IN_THREAD
+  if (mUsePollingThread) {
+    // put entire RFID polling into background thread
+    pthread_mutex_init(&mReportMutex, NULL);
+    mRfidPollingThread = MainLoop::currentMainLoop().executeInThread(
+      boost::bind(&RFIDs::rfidPollingThread, this, _1),
+      boost::bind(&RFIDs::rfidPollingThreadSignal, this, _1, _2)
+    );
+    return;
+  }
+  #endif
+  // single threaded
+  OLOG(LOG_NOTICE, "- Resetting all readers (single threaded)");
   resetReaders(boost::bind(&RFIDs::initReaders, this));
 }
+
+
+void RFIDs::stopReaders()
+{
+  haltIrqHandling();
+  mResetOutput->set(0); // put into reset, active low
+  mRfidReaders.clear();
+}
+
+
+#if IN_THREAD
+
+void RFIDs::rfidPollingThread(ChildThreadWrapper &aThread)
+{
+  // create mainloop
+  OLOG(LOG_INFO, "Start of polling thread routine")
+  aThread.threadMainLoop();
+  // start with reset, will schedule first mainloop timers
+  resetReaders(boost::bind(&RFIDs::initReaders, this));
+  // now start the thread's mainloop
+  aThread.threadMainLoop().run();
+  // mainloop exits, so we need to stop readers
+  stopReaders();
+  OLOG(LOG_INFO, "End of polling thread routine")
+}
+
+
+void RFIDs::rfidPollingThreadSignal(ChildThreadWrapper &aChildThread, ThreadSignals aSignalCode)
+{
+  OLOG(LOG_DEBUG, "Received signal from child thread: %d", aSignalCode);
+  if (aSignalCode==threadSignalUserSignal) {
+    // means a new RFID was detected
+    // - get the message object
+    pthread_mutex_lock(&mReportMutex);
+    JsonObjectPtr message = mDetectionMessage;
+    mDetectionMessage.reset();
+    pthread_mutex_unlock(&mReportMutex);
+    // - send it
+    sendEventMessage(message);
+  }
+  else if (aSignalCode==threadSignalCompleted) {
+    OLOG(LOG_INFO, "Polling thread reports having ended");
+    mRfidPollingThread.reset();
+  }
+}
+
+#endif // IN_THREAD
+
 
 
 void RFIDs::initReaders()

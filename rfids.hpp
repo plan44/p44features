@@ -30,6 +30,7 @@
 namespace p44 {
 
   #define POLLING_IRQ 1
+  #define IN_THREAD 1
 
   class RFIDReader
   {
@@ -62,6 +63,13 @@ namespace p44 {
 
     #if POLLING_IRQ
     MLTicket mIrqTimer; ///< timer for polling IRQ
+    #endif
+
+    #if IN_THREAD
+    bool mUsePollingThread;
+    ChildThreadWrapperPtr mRfidPollingThread;
+    JsonObjectPtr mDetectionMessage;
+    pthread_mutex_t mReportMutex;
     #endif
 
   public:
@@ -100,7 +108,9 @@ namespace p44 {
     void resetDone(SimpleCB aDoneCB);
 
     void initOperation();
+
     void initReaders();
+    void stopReaders();
 
     void irqHandler(bool aState);
     void haltIrqHandling();
@@ -111,6 +121,11 @@ namespace p44 {
     void rfidRead(MLTimer& aTimer);
 
     void rfidDetected(int aReaderIndex, const string aRFIDnUID);
+
+    #if IN_THREAD
+    void rfidPollingThread(ChildThreadWrapper &aThread);
+    void rfidPollingThreadSignal(ChildThreadWrapper &aChildThread, ThreadSignals aSignalCode);
+    #endif
 
   };
 
