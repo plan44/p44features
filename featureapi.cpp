@@ -675,10 +675,16 @@ void FeatureApi::addFeaturesFromCommandLine(
   #endif
   #if ENABLE_FEATURE_RFIDS
   // - RFIDs
-  int spibusno;
-  if (a->getIntOption("rfidspibus", spibusno)) {
+  if (a->getStringOption("rfidspibus", s)) {
+    // either just SPI bus number
+    // or SPI bus number followed by a "-" and then SPI device options
+    char* e = NULL;
+    int spibusno = (int)strtol(s.c_str(), &e, 0);
+    string busdevice = "generic";
+    if (e && *e) busdevice += e;
+    busdevice += "@0";
     // bus device
-    SPIDevicePtr spiBusDevice = SPIManager::sharedManager().getDevice(spibusno, "generic@0");
+    SPIDevicePtr spiBusDevice = SPIManager::sharedManager().getDevice(spibusno, busdevice.c_str());
     // reset
     DigitalIoPtr resetPin = DigitalIoPtr(new DigitalIo(a->getOption("rfidreset","missing"), true, false)); // ResetN active to start with
     DigitalIoPtr irqPin = DigitalIoPtr(new DigitalIo(a->getOption("rfidirq","missing"), false, true)); // assume high (open drain)
