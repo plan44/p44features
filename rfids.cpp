@@ -44,6 +44,9 @@ RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, DigitalIoBusPtr aSelectBus, DigitalIoP
   #if IN_THREAD
   mUsePollingThread(false),
   #endif
+  mPollIrq(true),
+  mChipTimer(30), // 30 is a know-working value for most cases
+  mUseIrqWatchdog(false),
   mSpiDevice(aSPIGenericDev),
   mReaderSelectBus(aSelectBus),
   mResetOutput(aResetOutput),
@@ -110,13 +113,22 @@ ErrorPtr RFIDs::initialize(JsonObjectPtr aInitData)
     if (aInitData->get("pauseafterdetect", o)) {
       mPollPauseAfterDetect = o->doubleValue()*Second;
     }
+    if (aInitData->get("chiptimer", o)) {
+      mChipTimer = o->int32Value();
+    }
+    if (aInitData->get("useirqwatchdog", o)) {
+      mUseIrqWatchdog = o->boolValue();
+    }
     if (aInitData->get("readers", o)) {
       for (int i=0; i<o->arrayLength(); i++) {
         int readerIndex = o->arrayGet(i)->int32Value();
         RFIDReader rd;
-        rd.reader = RFID522Ptr(new RFID522(mSpiDevice, readerIndex, boost::bind(&RFIDs::selectReader, this, _1)));
+        rd.reader = RFID522Ptr(new RFID522(mSpiDevice, readerIndex, boost::bind(&RFIDs::selectReader, this, _1), mChipTimer, mUseIrqWatchdog));
         mRfidReaders[readerIndex] = rd;
       }
+    }
+    if (aInitData->get("pollirq", o)) {
+      mPollIrq = o->boolValue(); // Note: default is true
     }
     #if IN_THREAD
     if (aInitData->get("pollingthread", o)) {
@@ -270,14 +282,14 @@ void RFIDs::initReaders()
     reader->init();
   }
   // install IRQ
-  if (!POLLING_IRQ && mIrqInput)
-  {
-    if (!mIrqInput->setInputChangedHandler(boost::bind(&RFIDs::irqHandler, this, _1), 0, Never)) {
-      OLOG(LOG_ERR, "IRQ pin must have edge detection!");
+  if (!mPollIrq) {
+    if (!mIrqInput || !mIrqInput->setInputChangedHandler(boost::bind(&RFIDs::irqHandler, this, _1), 0, Never)) {
+      OLOG(LOG_ERR, "Need and IRQ pin, and it must have edge detection! -> switch to polling");
+      mPollIrq = true;
     }
   }
-  else {
-    // just poll IRQ
+  if (mPollIrq) {
+    // need to poll IRQ
     mPauseIrqHandling = false;
     mIrqTimer.executeOnce(boost::bind(&RFIDs::pollIrq, this, _1), mRfidPollInterval);
   }
@@ -332,13 +344,11 @@ void RFIDs::irqHandler(bool aState)
         // exit loop to allow pollPauseAfterDetect start immediately after card detection
         break;
       }
-      #if !POLLING_IRQ
-      if (irqInput && irqInput->isSet()==true) {
+      if (!mPollIrq && mIrqInput && mIrqInput->isSet()==true) {
         // served!
         FOCUSOLOG("IRQ served, irqline is HIGH now");
         break;
       }
-      #endif
       // next
       pos++;
     }
@@ -373,14 +383,12 @@ void RFIDs::gotCardNUID(RFID522Ptr aReader, ErrorPtr aErr, const string aNUID)
     if (r.lastNUID!=nUID || r.lastDetect==Never || r.lastDetect+mSameIdTimeout<now ) {
       r.lastDetect = now;
       r.lastNUID = nUID;
-      #if POLLING_IRQ
-      if (mPollPauseAfterDetect>0) {
+      if (mPollIrq && (mPollPauseAfterDetect>0)) {
         // stop polling for now
         haltIrqHandling();
         // resume after a pause
         mIrqTimer.executeOnce(boost::bind(&RFIDs::pollIrq, this, _1), mPollPauseAfterDetect);
       }
-      #endif
       rfidDetected(aReader->getReaderIndex(), nUID);
     }
   }

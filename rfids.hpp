@@ -29,7 +29,6 @@
 
 namespace p44 {
 
-  #define POLLING_IRQ 1
   #define IN_THREAD 1
 
   class RFIDReader
@@ -61,10 +60,10 @@ namespace p44 {
     MLTicket mStartupTimer; ///< timer for startup timing
     bool mPauseIrqHandling; ///< flag to suspend irq checking for a moment
 
-    #if POLLING_IRQ
     MLTicket mIrqTimer; ///< timer for polling IRQ
-    #endif
-
+    bool mPollIrq; ///< if set, we poll the IRQ line rather than relying on edge detection, default is TRUE
+    uint16_t mChipTimer; ///< the chip timer (preload) value to use
+    bool mUseIrqWatchdog; ///< use IRQ watchdog
     #if IN_THREAD
     bool mUsePollingThread;
     ChildThreadWrapperPtr mRfidPollingThread;
