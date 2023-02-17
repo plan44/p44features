@@ -57,6 +57,8 @@ namespace p44 {
     RFIDGroupVector mRfidGroups; ///< list of groups
     RFIDGroupVector::iterator mActiveGroup; ///< active group
     bool mDisableFields; ///< if set, fields are disable for non-active readers (grouped mode only)
+    MLMicroSeconds mGroupSwitchInterval; ///< interval for switching probing to new group
+    MLTicket mGroupSwitchTimer; ///< timer for switching groups
 
     MLMicroSeconds mRfidPollInterval; ///< poll interval
     MLMicroSeconds mSameIdTimeout; ///< how long the same ID will not get re-reported
@@ -118,8 +120,10 @@ namespace p44 {
     void initReaders();
     void stopReaders();
 
+    void switchToNextGroup();
     void runNextGroup();
     void runActiveGroup();
+    void stopActiveGroup(int aExceptReader = -1);
     void probeTypeAResult(RFID522Ptr aReader, ErrorPtr aErr);
     void antiCollisionResult(RFID522Ptr aReader, ErrorPtr aErr, const string aNUID);
 

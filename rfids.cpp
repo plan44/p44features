@@ -54,6 +54,7 @@ RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, DigitalIoBusPtr aSelectBus, DigitalIoP
   mIrqInput(aIRQInput),
   mPauseIrqHandling(false),
   mDisableFields(true),
+  mGroupSwitchInterval(RFID_DEFAULT_POLL_INTERVAL*3),
   mRfidPollInterval(RFID_DEFAULT_POLL_INTERVAL),
   mSameIdTimeout(RFID_DEFAULT_SAME_ID_TIMEOUT),
   mPollPauseAfterDetect(RFID_POLL_PAUSE_AFTER_DETECT)
@@ -119,7 +120,10 @@ ErrorPtr RFIDs::initialize(JsonObjectPtr aInitData)
       mChipTimer = o->int32Value();
     }
     if (aInitData->get("cmdtimeout", o)) {
-      mCmdTimeout = o->int64Value();
+      mCmdTimeout = o->doubleValue()*Second;
+    }
+    if (aInitData->get("groupswitchinterval", o)) {
+      mGroupSwitchInterval = o->doubleValue()*Second;
     }
     if (aInitData->get("useirqwatchdog", o)) {
       mUseIrqWatchdog = o->boolValue();
@@ -307,8 +311,28 @@ void RFIDs::rfidPollingThreadSignal(ChildThreadWrapper &aChildThread, ThreadSign
 #endif // IN_THREAD
 
 
+void RFIDs::stopActiveGroup(int aExceptReader)
+{
+  FOCUSOLOG("- stop all readers %s", aExceptReader<0 ? "" : "EXCEPT current one");
+  for (RFIDReaderMap::iterator pos = mActiveGroup->begin(); pos!=mActiveGroup->end(); ++pos) {
+    if (pos->first!=aExceptReader) {
+      // not the excepted reader, stop all action and possibly energy field
+      pos->second->reader->returnToIdle();
+      if (mDisableFields) pos->second->reader->energyField(false);
+    }
+  }
+}
+
+void RFIDs::switchToNextGroup()
+{
+  FOCUSOLOG("\n___ group timeout -> terminate current, switch to next");
+  stopActiveGroup();
+  runNextGroup();
+}
+
 void RFIDs::runNextGroup()
 {
+  mGroupSwitchTimer.cancel();
   // Next (or first) group
   if (mActiveGroup!=mRfidGroups.end()) mActiveGroup++;
   if (mActiveGroup==mRfidGroups.end()) mActiveGroup = mRfidGroups.begin();
@@ -319,37 +343,42 @@ void RFIDs::runNextGroup()
 void RFIDs::runActiveGroup()
 {
   // Start field and do a probe on all group members
+  FOCUSOLOG("\n=== Start running new group of readers");
   for (RFIDReaderMap::iterator pos = mActiveGroup->begin(); pos!=mActiveGroup->end(); ++pos) {
     RFID522Ptr reader = pos->second->reader;
     FOCUSOLOG("\nenable energy field and initiate single probing on reader %d", reader->getReaderIndex());
     reader->energyField(true);
     reader->probeTypeA(boost::bind(&RFIDs::probeTypeAResult, this, reader, _1), false); // NO "wait" == NO automatic re-issue of probe!
   }
+  // schedule group switching
+  mGroupSwitchTimer.executeOnce(boost::bind(&RFIDs::switchToNextGroup, this));
 }
 
 
 void RFIDs::probeTypeAResult(RFID522Ptr aReader, ErrorPtr aErr)
 {
-  OLOG(LOG_NOTICE, "\nprobeTypeAResult from reader %d", aReader->getReaderIndex());
-  // Stop all other readers in group
-  FOCUSOLOG("- stop all other readers");
-  for (RFIDReaderMap::iterator pos = mActiveGroup->begin(); pos!=mActiveGroup->end(); ++pos) {
-    if (pos->first!=aReader->getReaderIndex()) {
-      // not the current reader, stop all action and energy field
-      pos->second->reader->returnToIdle();
-      if (mDisableFields) pos->second->reader->energyField(false);
-    }
-  }
+  OLOG(LOG_INFO, "\nprobeTypeAResult from reader #%d", aReader->getReaderIndex());
   if (Error::isOK(aErr)) {
+    // Card detected: Stop all other readers in group
+    OLOG(LOG_NOTICE, "\nDetected card when probing reader #%d", aReader->getReaderIndex());
+    stopActiveGroup(aReader->getReaderIndex());
     // run antiCollision on the one we have detected
-    FOCUSOLOG("- successful probe, start antiCollision to get ID");
+    FOCUSOLOG("- start antiCollision to get ID");
     aReader->antiCollision(boost::bind(&RFIDs::antiCollisionResult, this, aReader, _1, _3));
   }
   else {
-    OLOG(LOG_DEBUG, "Error on reader %d, status='%s' -> disable and probe next group", aReader->getReaderIndex(), aErr->text());
-    aReader->returnToIdle();
-    if (mDisableFields) aReader->energyField(false);
-    runNextGroup();
+    // Error probing card
+    if (aErr->isError(RFIDError::domain(), RFIDError::ChipTimeout)) {
+      // Chip timeout: just means there is no card
+      OLOG(LOG_DEBUG, "- reader #%d - chip has timed out", aReader->getReaderIndex());
+      // PCD_TRANSCEIVE continues running, no op here
+    }
+    else {
+      // real error
+      OLOG(LOG_DEBUG, "Error on reader %d, status='%s' -> disable reader", aReader->getReaderIndex(), aErr->text());
+      aReader->returnToIdle();
+      if (mDisableFields) aReader->energyField(false);
+    }
   }
 }
 
