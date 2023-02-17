@@ -351,16 +351,17 @@ void RFIDs::runActiveGroup()
     reader->probeTypeA(boost::bind(&RFIDs::probeTypeAResult, this, reader, _1), false); // NO "wait" == NO automatic re-issue of probe!
   }
   // schedule group switching
-  mGroupSwitchTimer.executeOnce(boost::bind(&RFIDs::switchToNextGroup, this));
+  mGroupSwitchTimer.executeOnce(boost::bind(&RFIDs::switchToNextGroup, this), mGroupSwitchInterval);
 }
 
 
 void RFIDs::probeTypeAResult(RFID522Ptr aReader, ErrorPtr aErr)
 {
-  OLOG(LOG_INFO, "\nprobeTypeAResult from reader #%d", aReader->getReaderIndex());
+  FOCUSOLOG("\nprobeTypeAResult from reader #%d", aReader->getReaderIndex());
   if (Error::isOK(aErr)) {
     // Card detected: Stop all other readers in group
     OLOG(LOG_NOTICE, "\nDetected card when probing reader #%d", aReader->getReaderIndex());
+    mGroupSwitchTimer.cancel(); // no group switching now
     stopActiveGroup(aReader->getReaderIndex());
     // run antiCollision on the one we have detected
     FOCUSOLOG("- start antiCollision to get ID");
