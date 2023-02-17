@@ -64,6 +64,7 @@ namespace p44 {
     bool mPollIrq; ///< if set, we poll the IRQ line rather than relying on edge detection, default is TRUE
     uint16_t mChipTimer; ///< the chip timer (preload) value to use
     bool mUseIrqWatchdog; ///< use IRQ watchdog
+    MLMicroSeconds mCmdTimeout; ///< command timeout
     #if IN_THREAD
     bool mUsePollingThread;
     ChildThreadWrapperPtr mRfidPollingThread;

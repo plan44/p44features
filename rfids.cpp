@@ -46,6 +46,7 @@ RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, DigitalIoBusPtr aSelectBus, DigitalIoP
   #endif
   mPollIrq(true),
   mChipTimer(30), // 30 is a know-working value for most cases
+  mCmdTimeout(250*MilliSecond), // default that used to work
   mUseIrqWatchdog(false),
   mSpiDevice(aSPIGenericDev),
   mReaderSelectBus(aSelectBus),
@@ -116,6 +117,9 @@ ErrorPtr RFIDs::initialize(JsonObjectPtr aInitData)
     if (aInitData->get("chiptimer", o)) {
       mChipTimer = o->int32Value();
     }
+    if (aInitData->get("cmdtimeout", o)) {
+      mCmdTimeout = o->int64Value();
+    }
     if (aInitData->get("useirqwatchdog", o)) {
       mUseIrqWatchdog = o->boolValue();
     }
@@ -123,7 +127,7 @@ ErrorPtr RFIDs::initialize(JsonObjectPtr aInitData)
       for (int i=0; i<o->arrayLength(); i++) {
         int readerIndex = o->arrayGet(i)->int32Value();
         RFIDReader rd;
-        rd.reader = RFID522Ptr(new RFID522(mSpiDevice, readerIndex, boost::bind(&RFIDs::selectReader, this, _1), mChipTimer, mUseIrqWatchdog));
+        rd.reader = RFID522Ptr(new RFID522(mSpiDevice, readerIndex, boost::bind(&RFIDs::selectReader, this, _1), mChipTimer, mUseIrqWatchdog, mCmdTimeout));
         mRfidReaders[readerIndex] = rd;
       }
     }
