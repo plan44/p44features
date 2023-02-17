@@ -371,8 +371,9 @@ void RFIDs::probeTypeAResult(RFID522Ptr aReader, ErrorPtr aErr)
     // Error probing card
     if (aErr->isError(RFIDError::domain(), RFIDError::ChipTimeout)) {
       // Chip timeout: just means there is no card
-      OLOG(LOG_DEBUG, "- reader #%d - chip has timed out", aReader->getReaderIndex());
-      // PCD_TRANSCEIVE continues running, no op here
+      OLOG(LOG_DEBUG, "- reader #%d - chip has timed out -> continue transceiving", aReader->getReaderIndex());
+      // PCD_TRANSCEIVE continues running, but re-trigger sending data
+      aReader->continueTransceiving();
     }
     else {
       // real error
