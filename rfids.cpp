@@ -441,10 +441,14 @@ void RFIDs::initReaders()
 {
   if (mRfidGroups.size()>0) {
     // init all, but no energy field enabled
+    RFIDReaderMap::iterator pos = mRfidReaders.begin();
     for (RFIDReaderMap::iterator pos = mRfidReaders.begin(); pos!=mRfidReaders.end(); ++pos) {
       RFID522Ptr reader = pos->second->reader;
       OLOG(LOG_NOTICE, "- Enabling RFID522 reader address #%d, but energy field stays DISABLED", reader->getReaderIndex());
-      reader->init(mExtraRegValuePairs);
+      if (!reader->init(mExtraRegValuePairs)) {
+        OLOG(LOG_ERR, "Unknown or missing reader #%d", reader->getReaderIndex());
+        // FIXME: remove it, and from groups lists as well
+      }
     }
     // init IRQ handling
     initIrq();
@@ -456,12 +460,20 @@ void RFIDs::initReaders()
   }
   else {
     // old mode that does not seem to work correctly in some case, but does in others
-    for (RFIDReaderMap::iterator pos = mRfidReaders.begin(); pos!=mRfidReaders.end(); ++pos) {
+    RFIDReaderMap::iterator pos = mRfidReaders.begin();
+    while(pos!=mRfidReaders.end()) {
       RFID522Ptr reader = pos->second->reader;
       OLOG(LOG_NOTICE, "- Enabling RFID522 reader address #%d", reader->getReaderIndex());
-      reader->init(mExtraRegValuePairs);
-      OLOG(LOG_INFO, "- Activating Energy field for reader address #%d", reader->getReaderIndex());
-      reader->energyField(true);
+      if (!reader->init(mExtraRegValuePairs)) {
+        OLOG(LOG_ERR, "Unknown or missing reader #%d -> removing it", reader->getReaderIndex());
+        pos = mRfidReaders.erase(pos);
+        continue;
+      }
+      else {
+        OLOG(LOG_INFO, "- Activating Energy field for reader address #%d", reader->getReaderIndex());
+        reader->energyField(true);
+      }
+      ++pos;
     }
     // init IRQ handling
     initIrq();
