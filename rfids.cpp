@@ -46,7 +46,7 @@ RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, DigitalIoBusPtr aSelectBus, DigitalIoP
   mUsePollingThread(false),
   #endif
   mPollIrq(true),
-  mChipTimer(30), // 30 is a know-working value for most cases
+  mChipTimer(0), // use default
   mCmdTimeout(250*MilliSecond), // default that used to work
   mUseIrqWatchdog(false),
   mSpiDevice(aSPIGenericDev),
@@ -449,6 +449,7 @@ void RFIDs::initReaders()
         OLOG(LOG_ERR, "Unknown or missing reader #%d", reader->getReaderIndex());
         // FIXME: remove it, and from groups lists as well
       }
+      if (!mDisableFields) reader->energyField(true);
     }
     // init IRQ handling
     initIrq();
