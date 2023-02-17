@@ -26,6 +26,7 @@
 #define FOCUSLOGLEVEL 7
 
 #include "rfids.hpp"
+#include "utils.hpp"
 
 #if ENABLE_FEATURE_RFIDS
 
@@ -130,6 +131,9 @@ ErrorPtr RFIDs::initialize(JsonObjectPtr aInitData)
     }
     if (aInitData->get("disablefields", o)) {
       mDisableFields = o->boolValue();
+    }
+    if (aInitData->get("regvaluepairs", o)) {
+      mExtraRegValuePairs = hexToBinaryString(o->c_strValue(), true);
     }
     if (aInitData->get("readers", o)) {
       bool grouped = false;
@@ -440,7 +444,7 @@ void RFIDs::initReaders()
     for (RFIDReaderMap::iterator pos = mRfidReaders.begin(); pos!=mRfidReaders.end(); ++pos) {
       RFID522Ptr reader = pos->second->reader;
       OLOG(LOG_NOTICE, "- Enabling RFID522 reader address #%d, but energy field stays DISABLED", reader->getReaderIndex());
-      reader->init();
+      reader->init(mExtraRegValuePairs);
     }
     // init IRQ handling
     initIrq();
@@ -455,7 +459,7 @@ void RFIDs::initReaders()
     for (RFIDReaderMap::iterator pos = mRfidReaders.begin(); pos!=mRfidReaders.end(); ++pos) {
       RFID522Ptr reader = pos->second->reader;
       OLOG(LOG_NOTICE, "- Enabling RFID522 reader address #%d", reader->getReaderIndex());
-      reader->init();
+      reader->init(mExtraRegValuePairs);
       OLOG(LOG_INFO, "- Activating Energy field for reader address #%d", reader->getReaderIndex());
       reader->energyField(true);
     }

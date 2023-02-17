@@ -59,6 +59,7 @@ namespace p44 {
     bool mDisableFields; ///< if set, fields are disable for non-active readers (grouped mode only)
     MLMicroSeconds mGroupSwitchInterval; ///< interval for switching probing to new group
     MLTicket mGroupSwitchTimer; ///< timer for switching groups
+    string mExtraRegValuePairs; ///< extra register init pairs for readers
 
     MLMicroSeconds mRfidPollInterval; ///< poll interval
     MLMicroSeconds mSameIdTimeout; ///< how long the same ID will not get re-reported
