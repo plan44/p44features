@@ -31,7 +31,7 @@ namespace p44 {
 
   #define IN_THREAD 1
 
-  class RFIDReader
+  class RFIDReader : public P44Obj
   {
   public:
     RFIDReader() : lastDetect(Never) {};
@@ -39,19 +39,24 @@ namespace p44 {
     MLMicroSeconds lastDetect;
     string lastNUID;
   };
+  typedef boost::intrusive_ptr<RFIDReader> RFIDReaderPtr;
 
 
   class RFIDs : public Feature
   {
     typedef Feature inherited;
 
-    typedef std::map<int,RFIDReader> RFIDReaderMap;
+    typedef std::map<int,RFIDReaderPtr> RFIDReaderMap;
+    typedef std::vector<RFIDReaderMap> RFIDGroupVector;
 
     SPIDevicePtr mSpiDevice; ///< the generic SPI device where readers are connected
     DigitalIoBusPtr mReaderSelectBus; ///< the bus to select a specific reader by index
     DigitalIoPtr mResetOutput; ///< common reset output
     DigitalIoPtr mIrqInput; ///< common IRQ input
     RFIDReaderMap mRfidReaders; ///< the active RFID readers
+    RFIDGroupVector mRfidGroups; ///< list of groups
+    RFIDGroupVector::iterator mActiveGroup; ///< active group
+    bool mDisableFields; ///< if set, fields are disable for non-active readers (grouped mode only)
 
     MLMicroSeconds mRfidPollInterval; ///< poll interval
     MLMicroSeconds mSameIdTimeout; ///< how long the same ID will not get re-reported
@@ -109,8 +114,14 @@ namespace p44 {
 
     void initOperation();
 
+    void initIrq();
     void initReaders();
     void stopReaders();
+
+    void runNextGroup();
+    void runActiveGroup();
+    void probeTypeAResult(RFID522Ptr aReader, ErrorPtr aErr);
+    void antiCollisionResult(RFID522Ptr aReader, ErrorPtr aErr, const string aNUID);
 
     void irqHandler(bool aState);
     void haltIrqHandling();

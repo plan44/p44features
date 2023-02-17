@@ -53,6 +53,7 @@ RFIDs::RFIDs(SPIDevicePtr aSPIGenericDev, DigitalIoBusPtr aSelectBus, DigitalIoP
   mResetOutput(aResetOutput),
   mIrqInput(aIRQInput),
   mPauseIrqHandling(false),
+  mDisableFields(true),
   mRfidPollInterval(RFID_DEFAULT_POLL_INTERVAL),
   mSameIdTimeout(RFID_DEFAULT_SAME_ID_TIMEOUT),
   mPollPauseAfterDetect(RFID_POLL_PAUSE_AFTER_DETECT)
@@ -101,7 +102,7 @@ ErrorPtr RFIDs::initialize(JsonObjectPtr aInitData)
 {
   reset();
   // { "cmd":"init", "rfids": { "readers":[0,1,2,3,7,8,12,13] } }
-  // { "cmd":"init", "rfids": { "pollinterval":0.1, "readers":[0,1,2,7,9,23] } }
+  // { "cmd":"init", "rfids": { "readers":[[0,2],[7,12],[1,8,13]] } }
   ErrorPtr err;
   JsonObjectPtr o;
   if (mSpiDevice) {
@@ -123,12 +124,40 @@ ErrorPtr RFIDs::initialize(JsonObjectPtr aInitData)
     if (aInitData->get("useirqwatchdog", o)) {
       mUseIrqWatchdog = o->boolValue();
     }
+    if (aInitData->get("disablefields", o)) {
+      mDisableFields = o->boolValue();
+    }
     if (aInitData->get("readers", o)) {
+      bool grouped = false;
       for (int i=0; i<o->arrayLength(); i++) {
-        int readerIndex = o->arrayGet(i)->int32Value();
-        RFIDReader rd;
-        rd.reader = RFID522Ptr(new RFID522(mSpiDevice, readerIndex, boost::bind(&RFIDs::selectReader, this, _1), mChipTimer, mUseIrqWatchdog, mCmdTimeout));
-        mRfidReaders[readerIndex] = rd;
+        JsonObjectPtr a = o->arrayGet(i);
+        if (a->isType(json_type_array)) {
+          // Array of arrays
+          grouped = true;
+          // add members to a group
+          RFIDReaderMap g;
+          for (int j=0; j<a->arrayLength(); j++) {
+            int readerIndex = a->arrayGet(j)->int32Value();
+            RFIDReaderPtr rd = new RFIDReader;
+            rd->reader = RFID522Ptr(new RFID522(mSpiDevice, readerIndex, boost::bind(&RFIDs::selectReader, this, _1), mChipTimer, mUseIrqWatchdog, mCmdTimeout));
+            // add to group and global map
+            g[readerIndex] = rd;
+            mRfidReaders[readerIndex] = rd;
+          }
+          // add group if not empty
+          if (g.size()>0) mRfidGroups.push_back(g);
+        }
+        else if (grouped) {
+          err = TextError::err("cannot mix groups and simple readers");
+          break;
+        }
+        else {
+          // plain list, no groups
+          int readerIndex = o->arrayGet(i)->int32Value();
+          RFIDReaderPtr rd = new RFIDReader;
+          rd->reader = RFID522Ptr(new RFID522(mSpiDevice, readerIndex, boost::bind(&RFIDs::selectReader, this, _1), mChipTimer, mUseIrqWatchdog, mCmdTimeout));
+          mRfidReaders[readerIndex] = rd;
+        }
       }
     }
     if (aInitData->get("pollirq", o)) {
@@ -235,6 +264,7 @@ void RFIDs::stopReaders()
   haltIrqHandling();
   mResetOutput->set(0); // put into reset, active low
   mRfidReaders.clear();
+  mRfidGroups.clear();
 }
 
 
@@ -277,14 +307,85 @@ void RFIDs::rfidPollingThreadSignal(ChildThreadWrapper &aChildThread, ThreadSign
 #endif // IN_THREAD
 
 
-
-void RFIDs::initReaders()
+void RFIDs::runNextGroup()
 {
-  for (RFIDReaderMap::iterator pos = mRfidReaders.begin(); pos!=mRfidReaders.end(); ++pos) {
-    RFID522Ptr reader = pos->second.reader;
-    OLOG(LOG_NOTICE, "- Enabling RFID522 reader address #%d", reader->getReaderIndex());
-    reader->init();
+  // Next (or first) group
+  if (mActiveGroup!=mRfidGroups.end()) mActiveGroup++;
+  if (mActiveGroup==mRfidGroups.end()) mActiveGroup = mRfidGroups.begin();
+  // break stack
+  MainLoop::currentMainLoop().executeNow(boost::bind(&RFIDs::runActiveGroup, this));
+}
+
+void RFIDs::runActiveGroup()
+{
+  // Start field and do a probe on all group members
+  for (RFIDReaderMap::iterator pos = mActiveGroup->begin(); pos!=mActiveGroup->end(); ++pos) {
+    RFID522Ptr reader = pos->second->reader;
+    FOCUSOLOG("\nenable energy field and initiate single probing on reader %d", reader->getReaderIndex());
+    reader->energyField(true);
+    reader->probeTypeA(boost::bind(&RFIDs::probeTypeAResult, this, reader, _1), false); // NO "wait" == NO automatic re-issue of probe!
   }
+}
+
+
+void RFIDs::probeTypeAResult(RFID522Ptr aReader, ErrorPtr aErr)
+{
+  OLOG(LOG_NOTICE, "\nprobeTypeAResult from reader %d", aReader->getReaderIndex());
+  // Stop all other readers in group
+  FOCUSOLOG("- stop all other readers");
+  for (RFIDReaderMap::iterator pos = mActiveGroup->begin(); pos!=mActiveGroup->end(); ++pos) {
+    if (pos->first!=aReader->getReaderIndex()) {
+      // not the current reader, stop all action and energy field
+      pos->second->reader->returnToIdle();
+      if (mDisableFields) pos->second->reader->energyField(false);
+    }
+  }
+  if (Error::isOK(aErr)) {
+    // run antiCollision on the one we have detected
+    FOCUSOLOG("- successful probe, start antiCollision to get ID");
+    aReader->antiCollision(boost::bind(&RFIDs::antiCollisionResult, this, aReader, _1, _3));
+  }
+  else {
+    OLOG(LOG_DEBUG, "Error on reader %d, status='%s' -> disable and probe next group", aReader->getReaderIndex(), aErr->text());
+    aReader->returnToIdle();
+    if (mDisableFields) aReader->energyField(false);
+    runNextGroup();
+  }
+}
+
+
+
+void RFIDs::antiCollisionResult(RFID522Ptr aReader, ErrorPtr aErr, const string aNUID)
+{
+  if (Error::isOK(aErr)) {
+    string nUID;
+    // nUID is LSB first, and last byte is redundant BCC. Reverse to have MSB first, and omit BCC
+    for (int i=(int)aNUID.size()-2; i>=0; i--) {
+      string_format_append(nUID, "%02X", (uint8_t)aNUID[i]);
+    }
+    OLOG(LOG_NOTICE, "\nReader #%d: Card ID %s detected", aReader->getReaderIndex(), nUID.c_str());
+    RFIDReaderPtr r = mRfidReaders[aReader->getReaderIndex()];
+    MLMicroSeconds now = MainLoop::now();
+    if (r->lastNUID!=nUID || r->lastDetect==Never || r->lastDetect+mSameIdTimeout<now ) {
+      r->lastDetect = now;
+      r->lastNUID = nUID;
+      rfidDetected(aReader->getReaderIndex(), nUID);
+    }
+    else {
+      FOCUSOLOG("- not reported because detected just recently");
+    }
+    runNextGroup();
+  }
+  else {
+    OLOG(LOG_NOTICE, "\nReader #%d: Card ID reading error, restarting same group: %s", aReader->getReaderIndex(), aErr->text());
+    runActiveGroup();
+  }
+}
+
+
+
+void RFIDs::initIrq()
+{
   // install IRQ
   if (!mPollIrq) {
     if (!mIrqInput || !mIrqInput->setInputChangedHandler(boost::bind(&RFIDs::irqHandler, this, _1), 0, Never)) {
@@ -297,13 +398,46 @@ void RFIDs::initReaders()
     mPauseIrqHandling = false;
     mIrqTimer.executeOnce(boost::bind(&RFIDs::pollIrq, this, _1), mRfidPollInterval);
   }
-  // initialized now
-  setInitialized();
-  // start scanning for cards on all readers
-  for (RFIDReaderMap::iterator pos = mRfidReaders.begin(); pos!=mRfidReaders.end(); ++pos) {
-    RFID522Ptr reader = pos->second.reader;
-    FOCUSOLOG("Start probing on reader %d", reader->getReaderIndex());
-    reader->probeTypeA(boost::bind(&RFIDs::detectedCard, this, reader, _1), true);
+}
+
+
+
+void RFIDs::initReaders()
+{
+  if (mRfidGroups.size()>0) {
+    // init all, but no energy field enabled
+    for (RFIDReaderMap::iterator pos = mRfidReaders.begin(); pos!=mRfidReaders.end(); ++pos) {
+      RFID522Ptr reader = pos->second->reader;
+      OLOG(LOG_NOTICE, "- Enabling RFID522 reader address #%d, but energy field stays DISABLED", reader->getReaderIndex());
+      reader->init();
+    }
+    // init IRQ handling
+    initIrq();
+    // new, grouped operation mode
+    mActiveGroup = mRfidGroups.end();
+    runNextGroup();
+    // initialized now
+    setInitialized();
+  }
+  else {
+    // old mode that does not seem to work correctly in some case, but does in others
+    for (RFIDReaderMap::iterator pos = mRfidReaders.begin(); pos!=mRfidReaders.end(); ++pos) {
+      RFID522Ptr reader = pos->second->reader;
+      OLOG(LOG_NOTICE, "- Enabling RFID522 reader address #%d", reader->getReaderIndex());
+      reader->init();
+      OLOG(LOG_INFO, "- Activating Energy field for reader address #%d", reader->getReaderIndex());
+      reader->energyField(true);
+    }
+    // init IRQ handling
+    initIrq();
+    // initialized now
+    setInitialized();
+    // start scanning for cards on all readers
+    for (RFIDReaderMap::iterator pos = mRfidReaders.begin(); pos!=mRfidReaders.end(); ++pos) {
+      RFID522Ptr reader = pos->second->reader;
+      FOCUSOLOG("Start probing on reader %d", reader->getReaderIndex());
+      reader->probeTypeA(boost::bind(&RFIDs::detectedCard, this, reader, _1), true);
+    }
   }
 }
 
@@ -336,12 +470,12 @@ void RFIDs::irqHandler(bool aState)
   }
   else {
     // going low (active)
-    FOCUSOLOG("+++ RFIDs IRQ went ACTIVE -> calling irq handlers");
+    FOCUSOLOG("\n+++ RFIDs IRQ went ACTIVE (or we are polling) -> calling irq handlers");
     RFIDReaderMap::iterator pos = mRfidReaders.begin();
     bool pending = false;
     while (pos!=mRfidReaders.end()) {
       // let reader check IRQ
-      if (pos->second.reader->irqHandler()) {
+      if (pos->second->reader->irqHandler()) {
         pending = true;
       }
       if (mPauseIrqHandling) {
@@ -382,11 +516,11 @@ void RFIDs::gotCardNUID(RFID522Ptr aReader, ErrorPtr aErr, const string aNUID)
       string_format_append(nUID, "%02X", (uint8_t)aNUID[i]);
     }
     OLOG(LOG_NOTICE, "Reader #%d: Card ID %s detected", aReader->getReaderIndex(), nUID.c_str());
-    RFIDReader& r = mRfidReaders[aReader->getReaderIndex()];
+    RFIDReaderPtr r = mRfidReaders[aReader->getReaderIndex()];
     MLMicroSeconds now = MainLoop::now();
-    if (r.lastNUID!=nUID || r.lastDetect==Never || r.lastDetect+mSameIdTimeout<now ) {
-      r.lastDetect = now;
-      r.lastNUID = nUID;
+    if (r->lastNUID!=nUID || r->lastDetect==Never || r->lastDetect+mSameIdTimeout<now ) {
+      r->lastDetect = now;
+      r->lastNUID = nUID;
       if (mPollIrq && (mPollPauseAfterDetect>0)) {
         // stop polling for now
         haltIrqHandling();
