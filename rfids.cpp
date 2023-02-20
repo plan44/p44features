@@ -71,7 +71,11 @@ void RFIDs::reset()
   #if IN_THREAD
   if (mRfidPollingThread) {
     // make terminate (will do in background)
-    mRfidPollingThread->terminate();
+    mRfidPollingThread->disconnect();
+    mRfidPollingThread->threadMainLoop().terminate(EXIT_SUCCESS);
+    mRfidPollingThread.reset();
+    // forget this mutex, new thread will create a new one
+    pthread_mutex_destroy(&mReportMutex);
     inherited::reset();
     return;
   }
@@ -287,8 +291,6 @@ void RFIDs::rfidPollingThread(ChildThreadWrapper &aThread)
   resetReaders(boost::bind(&RFIDs::initReaders, this));
   // now start the thread's mainloop
   aThread.threadMainLoop().run();
-  // mainloop exits, so we need to stop readers
-  stopReaders();
   OLOG(LOG_INFO, "End of polling thread routine")
 }
 
