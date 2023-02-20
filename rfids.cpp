@@ -72,7 +72,7 @@ void RFIDs::reset()
   if (mRfidPollingThread) {
     // make terminate (will do in background)
     mRfidPollingThread->disconnect();
-    mRfidPollingThread->threadMainLoop().terminate(EXIT_SUCCESS);
+    mRfidPollingThread->terminate();
     mRfidPollingThread.reset();
     // forget this mutex, new thread will create a new one
     pthread_mutex_destroy(&mReportMutex);
