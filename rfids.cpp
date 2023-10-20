@@ -443,7 +443,6 @@ void RFIDs::initReaders()
 {
   if (mRfidGroups.size()>0) {
     // init all, but no energy field enabled
-    RFIDReaderMap::iterator pos = mRfidReaders.begin();
     for (RFIDReaderMap::iterator pos = mRfidReaders.begin(); pos!=mRfidReaders.end(); ++pos) {
       RFID522Ptr reader = pos->second->reader;
       OLOG(LOG_NOTICE, "- Enabling RFID522 reader address #%d, but energy field stays DISABLED", reader->getReaderIndex());
