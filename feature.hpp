@@ -41,7 +41,7 @@ namespace p44 {
     Feature(const string aName);
 
     /// @return the prefix to be used for logging from this object
-    virtual string logContextPrefix() { return string_format("Feature '%s'", name.c_str()); }
+    virtual string contextType() const { return string_format("Feature '%s'", name.c_str()); }
 
     /// initialize the feature
     /// @param aInitData the init data object specifying feature init details

@@ -163,7 +163,7 @@ namespace p44 {
     virtual ~FeatureApi();
 
     /// @return the prefix to be used for logging from this object
-    virtual string logContextPrefix() { return "FeatureApi"; }
+    virtual string contextType() const { return "FeatureApi"; }
 
 
     /// singleton
