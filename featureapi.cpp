@@ -425,7 +425,7 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
       // directly run a script.
       // Note: this is not for testing/debugging/REPL purposes, but just to fire some script commands
       //   Basic p44script edit/debug infrastructure is not implemented as part of the feature API
-      ScriptSource src(sourcecode+regular+keepvars+queue+ephemeralSource, "featurapi_run");
+      ScriptSource src(sourcecode+regular+keepvars+queue+ephemeralSource, "api:run", "%T (%O)");
       src.setSource(o->stringValue());
       src.run(inherit, boost::bind(&FeatureApi::scriptExecHandler, this, aRequest, _1));
       return Error::ok();
