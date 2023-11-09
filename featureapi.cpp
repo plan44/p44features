@@ -427,7 +427,7 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
       //   Basic p44script edit/debug infrastructure is not implemented as part of the feature API
       ScriptHost src(sourcecode|regular|keepvars|queue|ephemeralSource, "api:run", "%T (%O)");
       src.setSource(o->stringValue());
-      src.run(inherit, boost::bind(&FeatureApi::scriptExecHandler, this, aRequest, _1));
+      src.runCommand(P44Script::start, boost::bind(&FeatureApi::scriptExecHandler, this, aRequest, _1));
       return Error::ok();
     }
     if (reqData->get("event", o, true)) {
