@@ -368,7 +368,7 @@ JsonObjectPtr WifiTrack::dataDump(bool aSsids, bool aMacs, bool aPersons, bool a
       p->add("count", JsonObject::newInt64((*ppos)->seenCount));
       p->add("last", JsonObject::newInt64((*ppos)->seenLast+unixTimeOffset));
       p->add("first", JsonObject::newInt64((*ppos)->seenFirst+unixTimeOffset));
-      p->add("color", JsonObject::newString(pixelToWebColor((*ppos)->color)));
+      p->add("color", JsonObject::newString(pixelToWebColor((*ppos)->color, true)));
       p->add("imgidx", JsonObject::newInt64((*ppos)->imageIndex));
       p->add("name", JsonObject::newString((*ppos)->name));
       JsonObjectPtr marr = JsonObject::newArray();
@@ -1071,13 +1071,13 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
     if (person) {
       // assign to all macs found related
       if (person->macs.insert(aMac).second) {
-        OLOG(LOG_NOTICE, "+++ MAC %s, %s via '%s' (just sighted) -> now linked to person '%s' (%d/#%s), MACs=%lu",
+        OLOG(LOG_NOTICE, "+++ MAC %s, %s via '%s' (just sighted) -> now linked to person '%s' (%d/%s), MACs=%lu",
           macAddressToString(aMac->mac,':').c_str(),
           nonNullCStr(aMac->ouiName),
           aSSid->ssid.c_str(),
           person->name.c_str(),
           person->imageIndex,
-          pixelToWebColor(person->color).c_str(),
+          pixelToWebColor(person->color, true).c_str(),
           person->macs.size()
         );
       }
@@ -1096,17 +1096,17 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
               person->seenFirst = oldPerson->seenFirst; // inherit age
               if (person->bestRssi<oldPerson->bestRssi) person->bestRssi = oldPerson->bestRssi;
               if (person->worstRssi>oldPerson->worstRssi) person->worstRssi = oldPerson->worstRssi;
-              OLOG(LOG_NOTICE, "--- Using older appearance '%s' (%d/#%s) for new combined person from now on",
+              OLOG(LOG_NOTICE, "--- Using older appearance '%s' (%d/%s) for new combined person from now on",
                 oldPerson->name.c_str(),
                 oldPerson->imageIndex,
-                pixelToWebColor(oldPerson->color).c_str()
+                pixelToWebColor(oldPerson->color, true).c_str()
               );
             }
             else {
-              OLOG(LOG_NOTICE, "--- Person '%s' (%d/#%s) not linked to a MAC any more -> deleted",
+              OLOG(LOG_NOTICE, "--- Person '%s' (%d/%s) not linked to a MAC any more -> deleted",
                 oldPerson->name.c_str(),
                 oldPerson->imageIndex,
-                pixelToWebColor(oldPerson->color).c_str()
+                pixelToWebColor(oldPerson->color, true).c_str()
               );
             }
           }
@@ -1114,12 +1114,12 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
         // assign new person
         (*mpos)->person = person;
         if (person->macs.insert(*mpos).second) {
-          OLOG(LOG_NOTICE, "+++ Found other MAC %s, %s related -> now linked to person '%s' (%d/#%s), MACs=%lu",
+          OLOG(LOG_NOTICE, "+++ Found other MAC %s, %s related -> now linked to person '%s' (%d/%s), MACs=%lu",
             macAddressToString((*mpos)->mac,':').c_str(),
             nonNullCStr((*mpos)->ouiName),
             person->name.c_str(),
             person->imageIndex,
-            pixelToWebColor(person->color).c_str(),
+            pixelToWebColor(person->color, true).c_str(),
             person->macs.size()
           );
         }
@@ -1135,11 +1135,11 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
     if (person->bestRssi<person->lastRssi) person->bestRssi = person->lastRssi;
     if (person->worstRssi>person->lastRssi) person->worstRssi = person->lastRssi;
     if (person->seenFirst==Never) person->seenFirst = person->seenLast;
-    OLOG(person->hidden || aMac->hidden ? LOG_DEBUG : LOG_INFO, "=== Recognized person%s, '%s', (%d/#%s), linked MACs=%lu, via ssid='%s', MAC=%s, %s%s (%d, best: %d)",
+    OLOG(person->hidden || aMac->hidden ? LOG_DEBUG : LOG_INFO, "=== Recognized person%s, '%s', (%d/%s), linked MACs=%lu, via ssid='%s', MAC=%s, %s%s (%d, best: %d)",
       person->hidden ? " (hidden)" : "",
       person->name.c_str(),
       person->imageIndex,
-      pixelToWebColor(person->color).c_str(),
+      pixelToWebColor(person->color, true).c_str(),
       person->macs.size(),
       aSSid->ssid.c_str(),
       macAddressToString(aMac->mac,':').c_str(),
@@ -1172,10 +1172,10 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
       if (!nameToShow.empty()) {
         // show message
         person->shownLast = person->seenLast;
-        OLOG(LOG_NOTICE, "*** Showing person as '%s' (%d/#%s) via %s, %s / '%s' (%d, best: %d)",
+        OLOG(LOG_NOTICE, "*** Showing person as '%s' (%d/%s) via %s, %s / '%s' (%d, best: %d)",
           nameToShow.c_str(),
           person->imageIndex,
-          pixelToWebColor(person->color).c_str(),
+          pixelToWebColor(person->color, true).c_str(),
           macAddressToString(aMac->mac,':').c_str(),
           nonNullCStr(aMac->ouiName),
           aSSid->ssid.c_str(),
@@ -1228,7 +1228,7 @@ void WifiTrack::displayEncounter(string aIntro, int aImageIndex, PixelColor aCol
       subst["HASINTRO"] = aIntro.size()>0 ? "1" : "0";
       subst["INTRO"] = aIntro;
       subst["IMGIDX"] = string_format("%d", aImageIndex);
-      subst["COLOR"] = pixelToWebColor(aColor);
+      subst["COLOR"] = pixelToWebColor(aColor, false);
       subst["HASNAME"] = aName.size()>0 ? "1" : "0";
       subst["NAME"] = aName;
       subst["HASBRAND"] = aBrand.size()>0 ? "1" : "0";
@@ -1249,7 +1249,7 @@ void WifiTrack::displayEncounter(string aIntro, int aImageIndex, PixelColor aCol
     personinfo->add("HASINTRO", JsonObject::newString(aIntro.size()>0 ? "1" : "0"));
     personinfo->add("INTRO", JsonObject::newString(aIntro));
     personinfo->add("IMGIDX", JsonObject::newString(string_format("%d", aImageIndex)));
-    personinfo->add("COLOR", JsonObject::newString(pixelToWebColor(aColor)));
+    personinfo->add("COLOR", JsonObject::newString(pixelToWebColor(aColor, false)));
     personinfo->add("HASNAME", JsonObject::newString(aName.size()>0 ? "1" : "0"));
     personinfo->add("NAME", JsonObject::newString(aName));
     personinfo->add("HASBRAND", JsonObject::newString(aBrand.size()>0 ? "1" : "0"));

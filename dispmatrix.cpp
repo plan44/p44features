@@ -320,12 +320,12 @@ JsonObjectPtr DispMatrix::status()
       P44ViewPtr contents = dispScroller->getScrolledView();
       if (contents) {
         // scrolled view = contents
-        answer->add("bgcolor", JsonObject::newString(pixelToWebColor(contents->getBackgroundColor())));
+        answer->add("bgcolor", JsonObject::newString(pixelToWebColor(contents->getBackgroundColor(), true)));
       }
       TextViewPtr text = boost::dynamic_pointer_cast<TextView>(contents);
       if (text) {
         // text view
-        answer->add("color", JsonObject::newString(pixelToWebColor(text->getForegroundColor())));
+        answer->add("color", JsonObject::newString(pixelToWebColor(text->getForegroundColor(), true)));
         answer->add("text", JsonObject::newString(text->getText()));
         answer->add("spacing", JsonObject::newInt32(text->getTextSpacing()));
       }
