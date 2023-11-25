@@ -596,7 +596,7 @@ void FeatureApi::sendEventMessageInternally(JsonObjectPtr aEventMessage)
 {
   #if ENABLE_P44SCRIPT
   if (mFeatureEventSource.hasSinks()) {
-    mFeatureEventSource.sendEvent(new JsonValue(aEventMessage)); // just a regular JSON value
+    mFeatureEventSource.sendEvent(ScriptObj::valueFromJSON(aEventMessage)); // just a regular JSON value
   }
   #endif
 }
@@ -816,11 +816,11 @@ static const BuiltinMemberDescriptor answer_desc =
   { "answer", executable|any, answer_numargs, answer_args, &answer_func };
 
 
-const ScriptObjPtr FeatureRequestObj::memberByName(const string aName, TypeInfo aMemberAccessFlags)
+const ScriptObjPtr FeatureRequestObj::memberByName(const string aName, TypeInfo aMemberAccessFlags) const
 {
   ScriptObjPtr val;
   if (uequals(aName, "answer")) {
-    val = new BuiltinFunctionObj(&answer_desc, this, NULL);
+    val = new BuiltinFunctionObj(&answer_desc, const_cast<FeatureRequestObj*>(this), NULL);
   }
   else {
     val = inherited::memberByName(aName, aMemberAccessFlags);
@@ -904,7 +904,7 @@ void FeatureApiLookup::featureCallDone(BuiltinFunctionContextPtr f, JsonObjectPt
     return;
   }
   if (aResult) {
-    f->finish(new JsonValue(aResult));
+    f->finish(ScriptObj::valueFromJSON(aResult));
     return;
   }
   f->finish(new AnnotatedNullValue("feature api request returns no answer"));

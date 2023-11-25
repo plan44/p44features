@@ -105,7 +105,7 @@ static void status_func(BuiltinFunctionContextPtr f)
 {
   FeatureObj* ft = dynamic_cast<FeatureObj*>(f->thisObj().get());
   assert(ft);
-  f->finish(new JsonValue(ft->feature()->status()));
+  f->finish(ScriptObj::valueFromJSON(ft->feature()->status()));
 }
 
 // reset()
@@ -139,7 +139,7 @@ static void featureCallDone(BuiltinFunctionContextPtr f, JsonObjectPtr aResult, 
     return;
   }
   if (aResult) {
-    f->finish(new JsonValue(aResult));
+    f->finish(ScriptObj::valueFromJSON(aResult));
     return;
   }
   f->finish(new AnnotatedNullValue("feature cmd without answer"));

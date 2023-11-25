@@ -292,9 +292,9 @@ namespace p44 {
   namespace P44Script {
 
     /// represents a feature API request/call
-    class FeatureRequestObj : public JsonValue
+    class FeatureRequestObj : public ObjectValue
     {
-      typedef JsonValue inherited;
+      typedef ObjectValue inherited;
 
       ApiRequestPtr mRequest;
 
@@ -302,7 +302,7 @@ namespace p44 {
       FeatureRequestObj(ApiRequestPtr aRequest);
       void sendResponse(JsonObjectPtr aResponse, ErrorPtr aError);
       virtual string getAnnotation() const P44_OVERRIDE;
-      virtual const ScriptObjPtr memberByName(const string aName, TypeInfo aMemberAccessFlags = none) P44_OVERRIDE;
+      virtual const ScriptObjPtr memberByName(const string aName, TypeInfo aMemberAccessFlags = none) const P44_OVERRIDE;
     };
 
 
