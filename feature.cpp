@@ -175,7 +175,7 @@ static void cmd_func(BuiltinFunctionContextPtr f)
 
 // set(property, value)
 // set(properties)
-static const BuiltInArgDesc set_args[] = { { text|object }, { any|optionalarg } };
+static const BuiltInArgDesc set_args[] = { { text|object }, { anyvalid|optionalarg } };
 static const size_t set_numargs = sizeof(set_args)/sizeof(BuiltInArgDesc);
 static void set_func(BuiltinFunctionContextPtr f)
 {
@@ -195,8 +195,8 @@ static const BuiltinMemberDescriptor featureMembers[] = {
   { "status", executable|value, 0, NULL, &status_func },
   { "init", executable|null|error, init_numargs, init_args, &init_func },
   { "reset", executable|null|error, 0, NULL, &reset_func },
-  { "cmd", executable|async|any|error, cmd_numargs, cmd_args, &cmd_func },
-  { "set", executable|async|any|error, set_numargs, set_args, &set_func },
+  { "cmd", executable|async|anyvalid|error, cmd_numargs, cmd_args, &cmd_func },
+  { "set", executable|async|anyvalid|error, set_numargs, set_args, &set_func },
   { NULL } // terminator
 };
 

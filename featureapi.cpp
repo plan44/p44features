@@ -799,7 +799,7 @@ string FeatureRequestObj::getAnnotation() const
 
 
 // answer([answer value|error])        answer the request/call
-static const BuiltInArgDesc answer_args[] = { { any|error|optionalarg } };
+static const BuiltInArgDesc answer_args[] = { { anyvalid|error|optionalarg } };
 static const size_t answer_numargs = sizeof(answer_args)/sizeof(BuiltInArgDesc);
 static void answer_func(BuiltinFunctionContextPtr f)
 {
@@ -813,7 +813,7 @@ static void answer_func(BuiltinFunctionContextPtr f)
   f->finish();
 }
 static const BuiltinMemberDescriptor answer_desc =
-  { "answer", executable|any, answer_numargs, answer_args, &answer_func };
+  { "answer", executable|anyvalid, answer_numargs, answer_args, &answer_func };
 
 
 const ScriptObjPtr FeatureRequestObj::memberByName(const string aName, TypeInfo aMemberAccessFlags) const
@@ -884,7 +884,7 @@ static void feature_func(BuiltinFunctionContextPtr f)
 
 
 static const BuiltinMemberDescriptor featureApiGlobals[] = {
-  { "feature", executable|any, feature_numargs, feature_args, &feature_func },
+  { "feature", executable|anyvalid, feature_numargs, feature_args, &feature_func },
   { "featurecall", executable|value|null, featurecall_numargs, featurecall_args, &featurecall_func },
   { "featureevent", executable|value|null, featureevent_numargs, featureevent_args, &featureevent_func },
   { NULL } // terminator
