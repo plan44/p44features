@@ -135,7 +135,7 @@ static void animator_func(BuiltinFunctionContextPtr f)
 
 
 static const BuiltinMemberDescriptor lightMembers[] = {
-  { "animator", executable|object, 0, NULL, &animator_func },
+  { "animator", executable|objectvalue, 0, NULL, &animator_func },
   { NULL } // terminator
 };
 

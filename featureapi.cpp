@@ -849,7 +849,7 @@ static void featureevent_func(BuiltinFunctionContextPtr f)
 
 // featurecall(json)      send a feature api call/request (for local processing)
 // featurecall()          return unhandled feature api call (only returns something in a trigger expressions, NULL otherwise)
-static const BuiltInArgDesc featurecall_args[] = { { object|optionalarg } };
+static const BuiltInArgDesc featurecall_args[] = { { objectvalue|optionalarg } };
 static const size_t featurecall_numargs = sizeof(featurecall_args)/sizeof(BuiltInArgDesc);
 static void featurecall_func(BuiltinFunctionContextPtr f)
 {

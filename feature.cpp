@@ -118,7 +118,7 @@ static void reset_func(BuiltinFunctionContextPtr f)
 }
 
 // init(json_config)
-static const BuiltInArgDesc init_args[] = { { object|numeric } };
+static const BuiltInArgDesc init_args[] = { { objectvalue|numeric } };
 static const size_t init_numargs = sizeof(init_args)/sizeof(BuiltInArgDesc);
 static void init_func(BuiltinFunctionContextPtr f)
 {
@@ -158,7 +158,7 @@ static void issueCommand(BuiltinFunctionContextPtr f, JsonObjectPtr aCommand)
 }
 
 // cmd(command [, jsonparams])
-static const BuiltInArgDesc cmd_args[] = { { text }, { object|optionalarg } };
+static const BuiltInArgDesc cmd_args[] = { { text }, { objectvalue|optionalarg } };
 static const size_t cmd_numargs = sizeof(cmd_args)/sizeof(BuiltInArgDesc);
 static void cmd_func(BuiltinFunctionContextPtr f)
 {
@@ -175,7 +175,7 @@ static void cmd_func(BuiltinFunctionContextPtr f)
 
 // set(property, value)
 // set(properties)
-static const BuiltInArgDesc set_args[] = { { text|object }, { anyvalid|optionalarg } };
+static const BuiltInArgDesc set_args[] = { { text|objectvalue }, { anyvalid|optionalarg } };
 static const size_t set_numargs = sizeof(set_args)/sizeof(BuiltInArgDesc);
 static void set_func(BuiltinFunctionContextPtr f)
 {
