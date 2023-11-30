@@ -316,7 +316,7 @@ JsonObjectPtr DispMatrix::status()
       answer->add("scrolloffsety", JsonObject::newDouble(dispScroller->getOffsetY()));
       answer->add("scrollstepx", JsonObject::newDouble(dispScroller->getStepX()));
       answer->add("scrollstepy", JsonObject::newDouble(dispScroller->getStepY()));
-      answer->add("scrollsteptime", JsonObject::newDouble((double)dispScroller->getScrollStepInterval()/Second));
+      answer->add("scrollsteptime", JsonObject::newDouble((double)dispScroller->getScrollStepIntervalS()));
       P44ViewPtr contents = dispScroller->getScrolledView();
       if (contents) {
         // scrolled view = contents
