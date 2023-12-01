@@ -718,7 +718,7 @@ void WifiTrack::loadOUIs()
     if (s[0]=='*') {
       uint32_t gbyte;
       if (sscanf(s.c_str()+1, "%u", &gbyte)!=1) continue;
-      ouis[msrch] = (const char *)gbyte; // not a pointer, but group header byte
+      ouis[msrch] = (const char *)(intptr_t)gbyte; // not a pointer, but group header byte
     }
     else {
       // always use same string for multiple occurrences
@@ -760,7 +760,7 @@ void WifiTrack::initOperation()
   ErrorPtr err;
   loadOUIs();
   #ifdef __APPLE__
-  uint64_t testMac = 0x40A36BC12345ll;
+  //uint64_t testMac = 0x40A36BC12345ll;
   //printf("%llX = %s", testMac, ouiName(testMac));
   #endif
   err = load(Application::sharedApplication()->tempPath(WIFITRACK_STATE_FILE_NAME));
@@ -1214,7 +1214,13 @@ void WifiTrack::displayEncounter(string aIntro, int aImageIndex, PixelColor aCol
         if (st) {
           PixelRect r;
           st->getEnclosingContentRect(r);
-          OLOG(LOG_INFO, "Remaining scroll time before this message will appear is %.2f Seconds, scrollX=%d, frame_x=%d/dx=%d, content_x=%d/dx=%d, enclosing_x=%d/dx=%d, stacksz=%zu", (double)rst/Second, (int)sc->getOffsetX(), st->getFrame().x, st->getFrame().dx, st->getContent().x, st->getContent().dx, r.x, r.dx, st->numViews());
+          OLOG(LOG_INFO,
+            "Remaining scroll time before this message will appear is %.2f Seconds, scrollX=%d, frame_x=%d/dx=%d, content_x=%d/dx=%d, enclosing_x=%d/dx=%d, stacksz=%zu",
+            (double)rst/Second, (int)sc->getScrollX(),
+            st->getFrame().x, st->getFrame().dx,
+            st->getContent().x, st->getContent().dx,
+            r.x, r.dx, st->numViews()
+          );
         }
       }
       if (rst<-1*Second) {

@@ -90,7 +90,7 @@ ErrorPtr Indicators::initialize(JsonObjectPtr aInitData)
       }
       if (rootView) {
         // indicators view might already exist in current root view hiearchy
-        mIndicatorsView = dynamic_pointer_cast<ViewStack>(rootView->getView(indicatorsLabel));
+        mIndicatorsView = dynamic_pointer_cast<ViewStack>(rootView->findView(indicatorsLabel));
       }
       ViewStackPtr rootStack = dynamic_pointer_cast<ViewStack>(rootView);
       if (!mIndicatorsView) {

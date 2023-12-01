@@ -120,7 +120,7 @@ ErrorPtr DispMatrix::initialize(JsonObjectPtr aInitData)
     }
     if (rootView) {
       // there is a rootview, it should contain a scroller
-      dispScroller = boost::dynamic_pointer_cast<ViewScroller>(rootView->getView(DISPSCROLLER_LABEL));
+      dispScroller = boost::dynamic_pointer_cast<ViewScroller>(rootView->findView(DISPSCROLLER_LABEL));
     }
     else {
       // no existing or explicitly initialized rootview: install default scroller as root
@@ -134,8 +134,8 @@ ErrorPtr DispMatrix::initialize(JsonObjectPtr aInitData)
       rootView = dispScroller;
     }
     if (dispScroller) {
-      dispScroller->setOffsetX(installationOffsetX);
-      dispScroller->setOffsetY(installationOffsetY);
+      dispScroller->setScrollX(installationOffsetX);
+      dispScroller->setScrollY(installationOffsetY);
     }
     if (Error::isOK(err)) {
       // install root view
@@ -233,7 +233,7 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
         string viewLabel = o->stringValue();
         JsonObjectPtr viewConfig = data->get("config");
         if (viewConfig) {
-          P44ViewPtr view = rootView->getView(viewLabel);
+          P44ViewPtr view = rootView->findView(viewLabel);
           if (view) err = view->configureFromResourceOrObj(viewConfig, FEATURE_NAME "/");
           return err ? err : Error::ok();
         }
@@ -253,10 +253,10 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
           // due to offset wraparound according to scrolled view's content size (~=text length)
           // current offset might be smaller than panel's offsetX right now. This must be
           // adjusted BEFORE content size changes
-          double ox = dispScroller->getOffsetX();
+          double ox = dispScroller->getScrollX();
           double cx = dispScroller->getContentSize().x;
           while (cx>0 && ox<installationOffsetX) ox += cx;
-          dispScroller->setOffsetX(ox);
+          dispScroller->setScrollX(ox);
           sceneView.reset();
           dispScroller->setScrolledView(sceneView);
         }
@@ -269,19 +269,19 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
     }
     if (data->get("text", o, true)) {
       string msg = o->stringValue();
-      TextViewPtr textview = boost::dynamic_pointer_cast<TextView>(rootView->getView("TEXT"));
+      TextViewPtr textview = boost::dynamic_pointer_cast<TextView>(rootView->findView("TEXT"));
       if (textview) textview->setText(msg);
     }
     if (data->get("color", o, true)) {
       // of the text
       PixelColor p = webColorToPixel(o->stringValue());
-      TextViewPtr textview = boost::dynamic_pointer_cast<TextView>(rootView->getView("TEXT"));
+      TextViewPtr textview = boost::dynamic_pointer_cast<TextView>(rootView->findView("TEXT"));
       if (textview) textview->setForegroundColor(p);
     }
     if (data->get("spacing", o, true)) {
       // of the text
       int spacing = o->int32Value();
-      TextViewPtr textview = boost::dynamic_pointer_cast<TextView>(rootView->getView("TEXT"));
+      TextViewPtr textview = boost::dynamic_pointer_cast<TextView>(rootView->findView("TEXT"));
       if (textview) textview->setTextSpacing(spacing);
     }
     if (data->get("bgcolor", o, true)) {
@@ -293,12 +293,12 @@ ErrorPtr DispMatrix::processRequest(ApiRequestPtr aRequest)
     if (data->get("offsetx", o, true)) {
       // of the scroller, additionally offset by installation offset
       double offs = o->doubleValue();
-      if (dispScroller) dispScroller->setOffsetX(offs+installationOffsetX);
+      if (dispScroller) dispScroller->setScrollX(offs+installationOffsetX);
     }
     if (data->get("offsety", o, true)) {
       // of the scroller, additionally offset by installation offset
       double offs = o->doubleValue();
-      if (dispScroller) dispScroller->setOffsetY(offs+installationOffsetY);
+      if (dispScroller) dispScroller->setScrollY(offs+installationOffsetY);
     }
     return err ? err : Error::ok();
   }
@@ -312,8 +312,8 @@ JsonObjectPtr DispMatrix::status()
     answer->add("unixtime", JsonObject::newDouble((double)MainLoop::unixtime()/Second));
     if (dispScroller) {
       answer->add("brightness", JsonObject::newInt32(dispScroller->getAlpha()));
-      answer->add("scrolloffsetx", JsonObject::newDouble(dispScroller->getOffsetX()));
-      answer->add("scrolloffsety", JsonObject::newDouble(dispScroller->getOffsetY()));
+      answer->add("scrolloffsetx", JsonObject::newDouble(dispScroller->getScrollX()));
+      answer->add("scrolloffsety", JsonObject::newDouble(dispScroller->getScrollY()));
       answer->add("scrollstepx", JsonObject::newDouble(dispScroller->getStepX()));
       answer->add("scrollstepy", JsonObject::newDouble(dispScroller->getStepY()));
       answer->add("scrollsteptime", JsonObject::newDouble((double)dispScroller->getScrollStepIntervalS()));
@@ -376,8 +376,8 @@ MLMicroSeconds DispMatrix::getRemainingScrollTime(bool aLast, bool aPurge)
 void DispMatrix::resetScroll()
 {
   if (dispScroller) {
-    dispScroller->setOffsetX(0);
-    dispScroller->setOffsetY(0);
+    dispScroller->setScrollX(0);
+    dispScroller->setScrollY(0);
     P44ViewPtr contents = dispScroller->getScrolledView();
     if (contents) {
       PixelRect f = contents->getFrame();
