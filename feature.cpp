@@ -118,8 +118,7 @@ static void reset_func(BuiltinFunctionContextPtr f)
 }
 
 // init(json_config)
-static const BuiltInArgDesc init_args[] = { { objectvalue|numeric } };
-static const size_t init_numargs = sizeof(init_args)/sizeof(BuiltInArgDesc);
+FUNC_ARG_DEFS(init, { objectvalue|numeric } );
 static void init_func(BuiltinFunctionContextPtr f)
 {
   FeatureObj* ft = dynamic_cast<FeatureObj*>(f->thisObj().get());
@@ -158,8 +157,7 @@ static void issueCommand(BuiltinFunctionContextPtr f, JsonObjectPtr aCommand)
 }
 
 // cmd(command [, jsonparams])
-static const BuiltInArgDesc cmd_args[] = { { text }, { objectvalue|optionalarg } };
-static const size_t cmd_numargs = sizeof(cmd_args)/sizeof(BuiltInArgDesc);
+FUNC_ARG_DEFS(cmd, { text }, { objectvalue|optionalarg } );
 static void cmd_func(BuiltinFunctionContextPtr f)
 {
   JsonObjectPtr jcmd;
@@ -175,8 +173,7 @@ static void cmd_func(BuiltinFunctionContextPtr f)
 
 // set(property, value)
 // set(properties)
-static const BuiltInArgDesc set_args[] = { { text|objectvalue }, { anyvalid|optionalarg } };
-static const size_t set_numargs = sizeof(set_args)/sizeof(BuiltInArgDesc);
+FUNC_ARG_DEFS(set, { text|objectvalue }, { anyvalid|optionalarg } );
 static void set_func(BuiltinFunctionContextPtr f)
 {
   JsonObjectPtr jcmd;
@@ -192,11 +189,11 @@ static void set_func(BuiltinFunctionContextPtr f)
 
 
 static const BuiltinMemberDescriptor featureMembers[] = {
-  { "status", executable|value, 0, NULL, &status_func },
-  { "init", executable|null|error, init_numargs, init_args, &init_func },
-  { "reset", executable|null|error, 0, NULL, &reset_func },
-  { "cmd", executable|async|anyvalid|error, cmd_numargs, cmd_args, &cmd_func },
-  { "set", executable|async|anyvalid|error, set_numargs, set_args, &set_func },
+  FUNC_DEF_NOARG(status, executable|value),
+  FUNC_DEF_W_ARG(init, executable|null|error),
+  FUNC_DEF_NOARG(reset, executable|null|error),
+  FUNC_DEF_W_ARG(cmd, executable|async|anyvalid|error),
+  FUNC_DEF_W_ARG(set, executable|async|anyvalid|error),
   { NULL } // terminator
 };
 

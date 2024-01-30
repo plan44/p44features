@@ -799,8 +799,7 @@ string FeatureRequestObj::getAnnotation() const
 
 
 // answer([answer value|error])        answer the request/call
-static const BuiltInArgDesc answer_args[] = { { anyvalid|error|optionalarg } };
-static const size_t answer_numargs = sizeof(answer_args)/sizeof(BuiltInArgDesc);
+FUNC_ARG_DEFS(answer, { anyvalid|error|optionalarg } );
 static void answer_func(BuiltinFunctionContextPtr f)
 {
   FeatureRequestObj* reqObj = dynamic_cast<FeatureRequestObj *>(f->thisObj().get());
@@ -813,7 +812,7 @@ static void answer_func(BuiltinFunctionContextPtr f)
   f->finish();
 }
 static const BuiltinMemberDescriptor answer_desc =
-  { "answer", executable|anyvalid, answer_numargs, answer_args, &answer_func };
+  FUNC_DEF_W_ARG(answer, executable|anyvalid);
 
 
 const ScriptObjPtr FeatureRequestObj::memberByName(const string aName, TypeInfo aMemberAccessFlags) const
@@ -831,8 +830,7 @@ const ScriptObjPtr FeatureRequestObj::memberByName(const string aName, TypeInfo 
 
 // featureevent(json)    send a feature event
 // featureevent()        return feature event (only returns something in a trigger expressions, NULL otherwise)
-static const BuiltInArgDesc featureevent_args[] = { { structured|optionalarg } };
-static const size_t featureevent_numargs = sizeof(featureevent_args)/sizeof(BuiltInArgDesc);
+FUNC_ARG_DEFS(featureevent, { structured|optionalarg } );
 static void featureevent_func(BuiltinFunctionContextPtr f)
 {
   if (f->numArgs()==0) {
@@ -849,8 +847,7 @@ static void featureevent_func(BuiltinFunctionContextPtr f)
 
 // featurecall(json)      send a feature api call/request (for local processing)
 // featurecall()          return unhandled feature api call (only returns something in a trigger expressions, NULL otherwise)
-static const BuiltInArgDesc featurecall_args[] = { { objectvalue|optionalarg } };
-static const size_t featurecall_numargs = sizeof(featurecall_args)/sizeof(BuiltInArgDesc);
+FUNC_ARG_DEFS(featurecall, { objectvalue|optionalarg } );
 static void featurecall_func(BuiltinFunctionContextPtr f)
 {
   if (f->numArgs()==0) {
@@ -870,8 +867,7 @@ static void featurecall_func(BuiltinFunctionContextPtr f)
 
 
 // feature(featurename)
-static const BuiltInArgDesc feature_args[] = { { text } };
-static const size_t feature_numargs = sizeof(feature_args)/sizeof(BuiltInArgDesc);
+FUNC_ARG_DEFS(feature, { text } );
 static void feature_func(BuiltinFunctionContextPtr f)
 {
   FeaturePtr feature = FeatureApi::sharedApi()->getFeature(f->arg(0)->stringValue());
@@ -884,9 +880,9 @@ static void feature_func(BuiltinFunctionContextPtr f)
 
 
 static const BuiltinMemberDescriptor featureApiGlobals[] = {
-  { "feature", executable|anyvalid, feature_numargs, feature_args, &feature_func },
-  { "featurecall", executable|value|null, featurecall_numargs, featurecall_args, &featurecall_func },
-  { "featureevent", executable|value|null, featureevent_numargs, featureevent_args, &featureevent_func },
+  FUNC_DEF_W_ARG(feature, executable|anyvalid),
+  FUNC_DEF_W_ARG(featurecall, executable|value|null),
+  FUNC_DEF_W_ARG(featureevent, executable|value|null),
   { NULL } // terminator
 };
 
