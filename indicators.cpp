@@ -187,11 +187,7 @@ ErrorPtr Indicators::processRequest(ApiRequestPtr aRequest)
           effectView->setFrame(f);
           effectView->setFullFrameContent();
           lsp->setRelativeContentOrigin(0, 0);
-          #if NEW_COLORING
           lsp->setRelativeContentSize(0.5, 0.5, false); // lightspot content size is the first quadrant, so 0.5 fills frame
-          #else
-          lsp->setRelativeExtent(1); // fill the area
-          #endif
           lsp->setColoringParameters(col, -1, gradient_curve_cos, 0, gradient_none, 0, gradient_none, radial);
           effectView->animatorFor("alpha")->from(0)->repeat(true, 2)->animate(255, t/2);
         }
