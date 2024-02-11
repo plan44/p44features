@@ -164,11 +164,7 @@ ValueAnimatorPtr LightObj::animator()
 LightObj::LightObj(FeaturePtr aFeature) :
   inherited(aFeature)
 {
-  if (sharedLightMemberLookupP==NULL) {
-    sharedLightMemberLookupP = new BuiltInMemberLookup(lightMembers);
-    sharedLightMemberLookupP->isMemberVariable(); // disable refcounting
-  }
-  registerMemberLookup(sharedLightMemberLookupP);
+  registerSharedLookup(sharedLightMemberLookupP, lightMembers);
 }
 
 #endif // ENABLE_P44SCRIPT

@@ -208,11 +208,7 @@ ScriptObjPtr Feature::newFeatureObj()
 FeatureObj::FeatureObj(FeaturePtr aFeature) :
   mFeature(aFeature)
 {
-  if (sharedFeatureMemberLookupP==NULL) {
-    sharedFeatureMemberLookupP = new BuiltInMemberLookup(featureMembers);
-    sharedFeatureMemberLookupP->isMemberVariable(); // disable refcounting
-  }
-  registerMemberLookup(sharedFeatureMemberLookupP);
+  registerSharedLookup(sharedFeatureMemberLookupP, featureMembers);
 }
 
 
