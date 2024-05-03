@@ -625,6 +625,8 @@ const char* WifiTrack::ouiName(uint64_t aMac)
 }
 
 
+#define CREATE_OUI_TABLE 0
+
 #ifdef __APPLE__
 
 // create a space saving version of the wireshark OUI table, by grouping /24 and /36 into sublists,
@@ -754,8 +756,8 @@ void WifiTrack::initOperation()
     }
   }
   // network scanning
-  #ifdef __APPLE__
-  //createOUItable();
+  #if defined(__APPLE__) && CREATE_OUI_TABLE
+  createOUItable();
   #endif
   ErrorPtr err;
   loadOUIs();
@@ -803,7 +805,8 @@ void WifiTrack::startScanner()
       string_format_append(cmd, " and \\( radio[0x%x] \\> 0x%02X \\)", mRadiotapDBOffset , m);
     }
     #ifdef __APPLE__
-    #warning "hardcoded access to mixloop/hermel/35c3 chatty wifi device"
+    OLOG(LOG_WARNING, "hardcoded access to mixloop/hermel/35c3 chatty wifi device");
+    //#warning "hardcoded access to mixloop/hermel/35c3 chatty wifi device"
     //cmd = "ssh -p 22 root@hermel-40a36bc18907.local. \"tcpdump -e -i moni0 -s 2000 type mgt subtype probe-req\"";
     cmd = "ssh -p 22 root@1a8479bcaf76.cust.devices.plan44.ch \"" + cmd + "\"";
     #endif
