@@ -41,43 +41,43 @@ Splitflaps::Splitflaps(
   const char *aTxEnablePinSpec, const char *aRxEnablePinSpec, MLMicroSeconds aOffDelay
 ) :
   inherited(FEATURE_NAME),
-  sbbSerial(MainLoop::currentMainLoop()),
-  txOffDelay(0),
-  txEnableMode(txEnable_none)
+  mSbbSerial(MainLoop::currentMainLoop()),
+  mTxOffDelay(0),
+  mTxEnableMode(txEnable_none)
 {
-  sbbSerial.isMemberVariable();
+  mSbbSerial.isMemberVariable();
   if (strcmp(aConnectionSpec,"simulation")==0) {
     // simulation mode
   }
   else {
-    sbbSerial.serialComm->setConnectionSpecification(aConnectionSpec, aDefaultPort, SBB_COMMPARAMS);
+    mSbbSerial.mSerialComm->setConnectionSpecification(aConnectionSpec, aDefaultPort, SBB_COMMPARAMS);
     // we need a non-standard transmitter
-    sbbSerial.setTransmitter(boost::bind(&Splitflaps::sbbTransmitter, this, _1, _2));
+    mSbbSerial.setTransmitter(boost::bind(&Splitflaps::sbbTransmitter, this, _1, _2));
     // and want to accept extra bytes
-    sbbSerial.setExtraBytesHandler(boost::bind(&Splitflaps::acceptExtraBytes, this, _1, _2));
+    mSbbSerial.setExtraBytesHandler(boost::bind(&Splitflaps::acceptExtraBytes, this, _1, _2));
     //    // set accept buffer for re-assembling messages before processing
     //    setAcceptBuffer(100); // we don't know yet how long SBB messages can get
   }
   // Tx driver control
-  txOffDelay = aOffDelay;
+  mTxOffDelay = aOffDelay;
   if (strcmp(aTxEnablePinSpec, "DTR")==0) {
-    txEnableMode = txEnable_dtr;
+    mTxEnableMode = txEnable_dtr;
   }
   else if (strcmp(aTxEnablePinSpec, "RTS")==0) {
-    txEnableMode = txEnable_rts;
+    mTxEnableMode = txEnable_rts;
   }
   else {
     // digital I/O line
-    txEnableMode = txEnable_io;
-    txEnable = DigitalIoPtr(new DigitalIo(aTxEnablePinSpec, true, false));
-    rxEnable = DigitalIoPtr(new DigitalIo(aRxEnablePinSpec, true, true));
+    mTxEnableMode = txEnable_io;
+    mTxEnable = DigitalIoPtr(new DigitalIo(aTxEnablePinSpec, true, false));
+    mRxEnable = DigitalIoPtr(new DigitalIo(aRxEnablePinSpec, true, true));
   }
 }
 
 
 void Splitflaps::reset()
 {
-  splitflapModules.clear();
+  mSplitflapModules.clear();
   inherited::reset();
 }
 
@@ -106,22 +106,22 @@ ErrorPtr Splitflaps::initialize(JsonObjectPtr aInitData)
         return TextError::err("module must specify name");
       }
       else {
-        module.name = mp->stringValue();
+        module.mName = mp->stringValue();
         if (!m->get("addr", mp)) {
           return TextError::err("module must specify addr");
         }
         else {
-          module.addr = mp->int32Value();
+          module.mAddr = mp->int32Value();
           if (m->get("type", mp)) {
             string mtyp = mp->stringValue();
-            if (mtyp=="alphanum") module.type = moduletype_alphanum;
-            else if (mtyp=="hour") module.type = moduletype_hour;
-            else if (mtyp=="minute") module.type = moduletype_minute;
-            else if (mtyp=="40") module.type = moduletype_40;
-            else if (mtyp=="62") module.type = moduletype_62;
+            if (mtyp=="alphanum") module.mType = moduletype_alphanum;
+            else if (mtyp=="hour") module.mType = moduletype_hour;
+            else if (mtyp=="minute") module.mType = moduletype_minute;
+            else if (mtyp=="40") module.mType = moduletype_40;
+            else if (mtyp=="62") module.mType = moduletype_62;
           }
           // add to list
-          splitflapModules.push_back(module);
+          mSplitflapModules.push_back(module);
         }
       }
     }
@@ -179,21 +179,21 @@ ErrorPtr Splitflaps::processRequest(ApiRequestPtr aRequest)
       else {
         // find module
         SplitFlapModuleVector::iterator mpos;
-        for (mpos=splitflapModules.begin(); mpos!=splitflapModules.end(); ++mpos) {
-          if (mpos->name==o->stringValue()) {
+        for (mpos=mSplitflapModules.begin(); mpos!=mSplitflapModules.end(); ++mpos) {
+          if (mpos->mName==o->stringValue()) {
             // module found
             if (!data->get("value", o)) {
               // FIXME: implement read back
               return TextError::err("reading module position not yet implemented");
             }
             int value = 0;
-            if (o->isType(json_type_string) && mpos->type==moduletype_alphanum) {
+            if (o->isType(json_type_string) && mpos->mType==moduletype_alphanum) {
               value = o->c_strValue()[0]; // take first char's ASCII-code as value
             }
             else {
               value = o->int32Value();
             }
-            setModuleValue(mpos->addr, mpos->type, value);
+            setModuleValue(mpos->mAddr, mpos->mType, value);
             return Error::ok();
           }
         }
@@ -225,10 +225,10 @@ JsonObjectPtr Splitflaps::status()
   JsonObjectPtr answer = inherited::status();
   if (answer->isType(json_type_object)) {
     JsonObjectPtr ms = JsonObject::newArray();
-    for (SplitFlapModuleVector::iterator pos = splitflapModules.begin(); pos!=splitflapModules.end(); ++pos) {
+    for (SplitFlapModuleVector::iterator pos = mSplitflapModules.begin(); pos!=mSplitflapModules.end(); ++pos) {
       JsonObjectPtr m = JsonObject::newObj();
-      m->add("name", JsonObject::newString(pos->name));
-      m->add("addr", JsonObject::newInt32(pos->addr));
+      m->add("name", JsonObject::newString(pos->mName));
+      m->add("addr", JsonObject::newInt32(pos->mAddr));
       ms->arrayAppend(m);
     }
     answer->add("modules", ms);
@@ -243,8 +243,8 @@ JsonObjectPtr Splitflaps::status()
 void Splitflaps::initOperation()
 {
   // open connection so we can receive from start
-  if (sbbSerial.serialComm->requestConnection()) {
-    sbbSerial.serialComm->setRTS(false); // not sending
+  if (mSbbSerial.mSerialComm->requestConnection()) {
+    mSbbSerial.mSerialComm->setRTS(false); // not sending
   }
   else {
     OLOG(LOG_WARNING, "Could not open serial connection");
@@ -255,16 +255,16 @@ void Splitflaps::initOperation()
 
 void Splitflaps::enableSendingImmediate(bool aEnable)
 {
-  switch(txEnableMode) {
+  switch(mTxEnableMode) {
     case txEnable_dtr:
-      sbbSerial.serialComm->setDTR(aEnable);
+      mSbbSerial.mSerialComm->setDTR(aEnable);
       return;
     case txEnable_rts:
-      sbbSerial.serialComm->setRTS(aEnable);
+      mSbbSerial.mSerialComm->setRTS(aEnable);
       return;
     case txEnable_io:
-      rxEnable->set(!aEnable);
-      txEnable->set(aEnable);
+      mRxEnable->set(!aEnable);
+      mTxEnable->set(aEnable);
       return;
     default:
       return; // NOP
@@ -274,12 +274,12 @@ void Splitflaps::enableSendingImmediate(bool aEnable)
 
 void Splitflaps::enableSending(bool aEnable)
 {
-  MainLoop::currentMainLoop().cancelExecutionTicket(txOffTicket);
-  if (aEnable || txOffDelay==0) {
+  MainLoop::currentMainLoop().cancelExecutionTicket(mTxOffTicket);
+  if (aEnable || mTxOffDelay==0) {
     enableSendingImmediate(aEnable);
   }
   else {
-    txOffTicket.executeOnce(boost::bind(&Splitflaps::enableSendingImmediate, this, aEnable), txOffDelay);
+    mTxOffTicket.executeOnce(boost::bind(&Splitflaps::enableSendingImmediate, this, aEnable), mTxOffDelay);
   }
 }
 
@@ -288,7 +288,7 @@ void Splitflaps::enableSending(bool aEnable)
 size_t Splitflaps::sbbTransmitter(size_t aNumBytes, const uint8_t *aBytes)
 {
   ssize_t res = 0;
-  ErrorPtr err = sbbSerial.serialComm->establishConnection();
+  ErrorPtr err = mSbbSerial.mSerialComm->establishConnection();
   if (Error::isOK(err)) {
     if (LOGENABLED(LOG_NOTICE)) {
       string m;
@@ -300,9 +300,9 @@ size_t Splitflaps::sbbTransmitter(size_t aNumBytes, const uint8_t *aBytes)
     // enable sending
     enableSending(true);
     // send break
-    sbbSerial.serialComm->sendBreak();
+    mSbbSerial.mSerialComm->sendBreak();
     // now let standard transmitter do the rest
-    res = sbbSerial.standardTransmitter(aNumBytes, aBytes);
+    res = mSbbSerial.standardTransmitter(aNumBytes, aBytes);
     // disable sending
     enableSending(false);
   }
@@ -331,9 +331,9 @@ void Splitflaps::sendRawCommand(const string aCommand, size_t aExpectedBytes, SB
   else {
     req->setCompletionCallback(boost::bind(&Splitflaps::sbbCommandComplete, this, aResultCB, SerialOperationPtr(), _1));
   }
-  sbbSerial.queueSerialOperation(req);
+  mSbbSerial.queueSerialOperation(req);
   // process operations
-  sbbSerial.processOperations();
+  mSbbSerial.processOperations();
 }
 
 

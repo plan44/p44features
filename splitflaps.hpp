@@ -43,10 +43,10 @@ namespace p44 {
   class SplitflapModule
   {
   public:
-    SplitflapModule() { addr = 0; type = moduletype_62; }
-    string name;
-    int addr;
-    SbbModuleType type;
+    SplitflapModule() { mAddr = 0; mType = moduletype_62; }
+    string mName;
+    int mAddr;
+    SbbModuleType mType;
   };
 
 
@@ -54,21 +54,21 @@ namespace p44 {
   {
     typedef Feature inherited;
 
-    SerialOperationQueue sbbSerial; ///< the serial communication with the SBB splitflap modules
+    SerialOperationQueue mSbbSerial; ///< the serial communication with the SBB splitflap modules
 
-    DigitalIoPtr txEnable;
-    DigitalIoPtr rxEnable;
+    DigitalIoPtr mTxEnable;
+    DigitalIoPtr mRxEnable;
     enum {
       txEnable_none,
       txEnable_io,
       txEnable_dtr,
       txEnable_rts
-    } txEnableMode;
-    MLMicroSeconds txOffDelay;
-    MLTicket txOffTicket; ///< Tx control
+    } mTxEnableMode;
+    MLMicroSeconds mTxOffDelay;
+    MLTicket mTxOffTicket; ///< Tx control
 
     typedef std::vector<SplitflapModule> SplitFlapModuleVector;
-    SplitFlapModuleVector splitflapModules;
+    SplitFlapModuleVector mSplitflapModules;
 
   public:
 
