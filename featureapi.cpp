@@ -575,10 +575,10 @@ ErrorPtr FeatureApi::ping(ApiRequestPtr aRequest)
 }
 
 
-void FeatureApi::start(const string aApiPort)
+void FeatureApi::start(const string aApiPort, int aProtocolFamily)
 {
   mApiServer = SocketCommPtr(new SocketComm(MainLoop::currentMainLoop()));
-  mApiServer->setConnectionParams(NULL, aApiPort.c_str(), SOCK_STREAM, AF_INET6);
+  mApiServer->setConnectionParams(NULL, aApiPort.c_str(), SOCK_STREAM, aProtocolFamily);
   mApiServer->setAllowNonlocalConnections(true);
   mApiServer->startServer(boost::bind(&FeatureApi::apiConnectionHandler, this, _1), 10);
   OLOG(LOG_INFO, "listening on port %s", aApiPort.c_str());
@@ -635,8 +635,9 @@ ErrorPtr FeatureApiError::err(const char *aFmt, ...)
 
 void FeatureApi::addFeaturesFromCommandLine(
   #if ENABLE_LEDARRANGEMENT
-  LEDChainArrangementPtr aLedChainArrangement
+  LEDChainArrangementPtr aLedChainArrangement,
   #endif
+  int aProtocolFamily
 )
 {
   CmdLineApp* a = CmdLineApp::sharedCmdLineApp();
@@ -756,7 +757,7 @@ void FeatureApi::addFeaturesFromCommandLine(
   // now, start API if port is selected
   string apiport;
   if (a->getStringOption("featureapiport", apiport)) {
-    sharedApi()->start(apiport);
+    sharedApi()->start(apiport, aProtocolFamily);
   }
 }
 

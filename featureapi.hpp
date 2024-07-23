@@ -178,9 +178,10 @@ namespace p44 {
     /// add features as specified on command line to the global sharedApi()
     /// @param aLedChainArrangement pass in the LED chain arrangement, if there is one
     ///   (needed for features based on p44lrgraphics)
-    static void addFeaturesFromCommandLine(LEDChainArrangementPtr aLedChainArrangement);
+    /// @param aProtocolFamily PF_INET, PF_INET6 or pseudo-family PF_INET4_AND_6 for both
+    static void addFeaturesFromCommandLine(LEDChainArrangementPtr aLedChainArrangement, int aProtocolFamily);
     #else
-    static void addFeaturesFromCommandLine();
+    static void addFeaturesFromCommandLine(int aProtocolFamily);
     #endif
 
     /// handle request
@@ -228,7 +229,9 @@ namespace p44 {
     FeaturePtr getFeature(const string aFeatureName);
 
     /// start the API
-    void start(const string aApiPort);
+    /// @param aApiPort the port to start the server on
+    /// @param aProtocolFamily PF_INET, PF_INET6 or pseudo-family PF_INET4_AND_6 for both
+    void start(const string aApiPort, int aProtocolFamily);
 
     /// send (event) message to API
     void sendEventMessage(JsonObjectPtr aEventMessage);
