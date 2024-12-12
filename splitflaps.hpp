@@ -43,10 +43,11 @@ namespace p44 {
   class SplitflapModule
   {
   public:
-    SplitflapModule() { mAddr = 0; mType = moduletype_62; }
+    SplitflapModule() { mAddr = 0; mType = moduletype_62; mLastSentValue = ' '; }
     string mName;
     uint16_t mAddr; ///< for RS485 bus modules: the module's address, for Omega Controller: 100*line + char
     SbbModuleType mType;
+    uint8_t mLastSentValue;
   };
 
 
@@ -119,12 +120,13 @@ namespace p44 {
     void sendRawCommand(const string aCommand, size_t aExpectedBytes, SBBResultCB aResultCB, MLMicroSeconds aInitiationDelay);
 
     /// set the value to display in a module
-    /// @param aModuleAddr the module address
-    ///   - for RS485 bus modules, the module's address
-    ///   - for Omega Controller, 100*line + char
-    /// @param aType the module type, controls value->position transformation
+    /// @param aSplitFlapModule the module
     /// @param aValue the value to show.
-    void setModuleValue(uint16_t aModuleAddr, SbbModuleType aType, uint8_t aValue);
+    void setModuleValue(SplitflapModule& aSplitFlapModule, uint8_t aValue);
+
+    /// get the value from a module (or its cache)
+    /// @param aSplitFlapModule the module
+    uint8_t getModuleValue(SplitflapModule& aSplitFlapModule);
 
   private:
 

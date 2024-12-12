@@ -211,8 +211,16 @@ ErrorPtr Splitflaps::processRequest(ApiRequestPtr aRequest)
           if (mpos->mName==o->stringValue()) {
             // module found
             if (!data->get("value", o)) {
-              // FIXME: implement read back
-              return TextError::err("reading module position not yet implemented");
+              // read back current module value
+              JsonObjectPtr ans;
+              uint8_t v = getModuleValue(*mpos);
+              if (mpos->mType==moduletype_alphanum) {
+                ans = JsonObject::newString((const char*)&v, 1);
+              }
+              else {
+                ans = JsonObject::newInt32(v);
+              }
+              aRequest->sendResponse(ans, ErrorPtr());
             }
             int value = 0;
             if (o->isType(json_type_string) && mpos->mType==moduletype_alphanum) {
@@ -221,7 +229,7 @@ ErrorPtr Splitflaps::processRequest(ApiRequestPtr aRequest)
             else {
               value = o->int32Value();
             }
-            setModuleValue(mpos->mAddr, mpos->mType, value);
+            setModuleValue(*mpos, value);
             return Error::ok();
           }
         }
@@ -257,6 +265,7 @@ JsonObjectPtr Splitflaps::status()
       JsonObjectPtr m = JsonObject::newObj();
       m->add("name", JsonObject::newString(pos->mName));
       m->add("addr", JsonObject::newInt32(pos->mAddr));
+      m->add("value", JsonObject::newInt32(pos->mLastSentValue));
       ms->arrayAppend(m);
     }
     answer->add("modules", ms);
@@ -317,9 +326,7 @@ ssize_t Splitflaps::acceptExtraBytes(size_t aNumBytes, const uint8_t *aBytes)
 }
 
 
-
 // MARK: ==== common splitflaps operation API
-
 
 void Splitflaps::initOperation()
 {
@@ -346,17 +353,22 @@ void Splitflaps::initOperation()
 }
 
 
-
-void Splitflaps::setModuleValue(uint16_t aModuleAddr, SbbModuleType aType, uint8_t aValue)
+void Splitflaps::setModuleValue(SplitflapModule& aSplitFlapModule, uint8_t aValue)
 {
+  aSplitFlapModule.mLastSentValue = aValue;
   if (mInterfaceType==interface_rs485bus) {
-    setModuleValueBus((uint8_t)aModuleAddr, aType, aValue);
+    setModuleValueBus((uint8_t)aSplitFlapModule.mAddr, aSplitFlapModule.mType, aValue);
   }
   else if (mInterfaceType==interface_omegacontroller) {
-    setModuleValueCtrl(aModuleAddr / 100, aModuleAddr % 100, aType, aValue);
+    setModuleValueCtrl(aSplitFlapModule.mAddr / 100, aSplitFlapModule.mAddr % 100, aSplitFlapModule.mType, aValue);
   }
 }
 
+
+uint8_t Splitflaps::getModuleValue(SplitflapModule& aSplitFlapModule)
+{
+  return aSplitFlapModule.mLastSentValue;
+}
 
 
 void Splitflaps::sendRawCommand(const string aCommand, size_t aExpectedBytes, SBBResultCB aResultCB, MLMicroSeconds aInitiationDelay)
@@ -601,7 +613,7 @@ void Splitflaps::sbbCtrlCommandComplete(SBBResultCB aResultCB, ErrorPtr aError)
 
 void Splitflaps::setModuleValueCtrl(uint8_t aLine, uint8_t aColumn, SbbModuleType aType, uint8_t aValue)
 {
-  if (aLine>=mOCtrlLines || aColumn>=mOCtrlLines) return;
+  if (aLine>=mOCtrlLines || aColumn>=mOCtrlColumns) return;
   uint8_t val;
   switch (aType) {
     case moduletype_alphanum :
