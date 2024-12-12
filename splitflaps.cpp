@@ -26,13 +26,9 @@
 
 using namespace p44;
 
-#define SBB_COMMPARAMS "19200,8,N,2"
+#define SBB_BUS_COMMPARAMS "19200,8,N,2"
+#define SBB_CTRL_COMMPARAMS "9600,7,E,1"
 
-// SBB RS485 protocol
-#define SBB_SYNCBYTE 0xFF // all commands start with this
-#define SBB_CMD_SETPOS 0xC0 // set position
-#define SBB_CMD_GETPOS 0xD0 // get position
-#define SBB_CMD_GETSERIAL 0xDF // get serial number
 
 #define FEATURE_NAME "splitflaps"
 
@@ -41,18 +37,22 @@ Splitflaps::Splitflaps(
   const char *aTxEnablePinSpec, const char *aRxEnablePinSpec, MLMicroSeconds aOffDelay
 ) :
   inherited(FEATURE_NAME),
+  mInterfaceType(interface_rs485bus),
   mSbbSerial(MainLoop::currentMainLoop()),
   mTxOffDelay(0),
-  mTxEnableMode(txEnable_none)
+  mTxEnableMode(txEnable_none),
+  mOCtrlAddress(0), // none
+  mOCtrlLines(2), // 2 lines (sides)...
+  mOCtrlColumns(6), // ...and 6 columns (modules) is a standard "Gleisanzeiger"
+  mOCtrlDirty(false)
 {
   mSbbSerial.isMemberVariable();
   if (strcmp(aConnectionSpec,"simulation")==0) {
     // simulation mode
+    mSimulation = true;
   }
   else {
-    mSbbSerial.mSerialComm->setConnectionSpecification(aConnectionSpec, aDefaultPort, SBB_COMMPARAMS);
-    // we need a non-standard transmitter
-    mSbbSerial.setTransmitter(boost::bind(&Splitflaps::sbbTransmitter, this, _1, _2));
+    mSbbSerial.mSerialComm->setConnectionSpecification(aConnectionSpec, aDefaultPort, SBB_BUS_COMMPARAMS);
     // and want to accept extra bytes
     mSbbSerial.setExtraBytesHandler(boost::bind(&Splitflaps::acceptExtraBytes, this, _1, _2));
     //    // set accept buffer for re-assembling messages before processing
@@ -77,6 +77,7 @@ Splitflaps::Splitflaps(
 
 void Splitflaps::reset()
 {
+  mInterfaceType = interface_rs485bus;
   mSplitflapModules.clear();
   inherited::reset();
 }
@@ -90,13 +91,37 @@ Splitflaps::~Splitflaps()
 
 // MARK: ==== splitflaps API
 
+#define MAX_OCTRL_LINES 10
+#define MAX_OCTRL_COLUMNS 100
+
+// Standard SBB Gleisanzeiger layout with Omega Controller:
+// Controller: 51 (Gleis70 module)
+// Lines:      2 (front and back)
+// Columns:    6 (modules)
+//   0  1  2       3       4     5
+//   hh:mm delay40 train62 via62 destination62
+
 
 ErrorPtr Splitflaps::initialize(JsonObjectPtr aInitData)
 {
   reset();
-  // { "cmd":"init", "splitflaps": { "modules":[ { "name":"name", "addr":xx, "type":"alphanum"|"hour"|"minute"|"40"|"62" } ] } }
+  // RS485 bus modules: { "cmd":"init", "splitflaps": { "modules":[ { "name":"name", "addr":xx, "type":"alphanum"|"hour"|"minute"|"40"|"62" } ] } }
+  // Omega Controller: { "cmd":"init", "splitflaps": { "controller":51, "lines":2, "columns":6, "modules":[ { "name":"name", "addr":xx, "type":"alphanum"|"hour"|"minute"|"40"|"62" } ] } }
   ErrorPtr err;
   JsonObjectPtr o;
+  if (aInitData->get("controller", o)) {
+    // setting a controller address enables Omega Controller mode
+    mInterfaceType = interface_omegacontroller;
+    mOCtrlAddress = o->int32Value();
+  }
+  if (aInitData->get("lines", o)) {
+    mOCtrlLines = (uint16_t)(o->int32Value());
+    if (mOCtrlLines>MAX_OCTRL_LINES || mOCtrlLines<1) return TextError::err("lines must be 1..%d", MAX_OCTRL_LINES);
+  }
+  if (aInitData->get("columns", o)) {
+    mOCtrlColumns = (uint16_t)(o->int32Value());
+    if (mOCtrlLines>MAX_OCTRL_COLUMNS || mOCtrlLines<1) return TextError::err("columns must be 1..%d", MAX_OCTRL_COLUMNS);
+  }
   if (aInitData->get("modules", o)) {
     for (int i=0; i<o->arrayLength(); i++) {
       JsonObjectPtr m = o->arrayGet(i);
@@ -108,7 +133,7 @@ ErrorPtr Splitflaps::initialize(JsonObjectPtr aInitData)
       else {
         module.mName = mp->stringValue();
         if (!m->get("addr", mp)) {
-          return TextError::err("module must specify addr");
+          return TextError::err("module must specify addr (RS485 addr or 100*line+column)");
         }
         else {
           module.mAddr = mp->int32Value();
@@ -163,10 +188,13 @@ ErrorPtr Splitflaps::processRequest(ApiRequestPtr aRequest)
         else {
           return TextError::err("specify command as array of bytes or hexstring");
         }
+        // possibly we want an initiation delay
+        MLMicroSeconds initiationDelay = -1; // standard
+        if (data->get("delay", o)) initiationDelay = o->doubleValue()*Second;
         // possibly we want an answer
         size_t answerBytes = 0;
         if (data->get("answer", o)) answerBytes = o->int32Value();
-        sendRawCommand(bytes, answerBytes, boost::bind(&Splitflaps::rawCommandAnswer, this, aRequest, _1, _2));
+        sendRawCommand(bytes, answerBytes, boost::bind(&Splitflaps::rawCommandAnswer, this, aRequest, _1, _2), initiationDelay);
         return ErrorPtr(); // handler will send reply
       }
     }
@@ -232,26 +260,17 @@ JsonObjectPtr Splitflaps::status()
       ms->arrayAppend(m);
     }
     answer->add("modules", ms);
+    if (mInterfaceType==interface_omegacontroller) {
+      answer->add("controller", JsonObject::newInt32(mOCtrlAddress));
+      answer->add("lines", JsonObject::newInt32(mOCtrlLines));
+      answer->add("columns", JsonObject::newInt32(mOCtrlColumns));
+    }
   }
   return answer;
 }
 
 
-// MARK: ==== splitflaps operation
-
-
-void Splitflaps::initOperation()
-{
-  // open connection so we can receive from start
-  if (mSbbSerial.mSerialComm->requestConnection()) {
-    mSbbSerial.mSerialComm->setRTS(false); // not sending
-  }
-  else {
-    OLOG(LOG_WARNING, "Could not open serial connection");
-  }
-  setInitialized();
-}
-
+// MARK: - common RS485 interface
 
 void Splitflaps::enableSendingImmediate(bool aEnable)
 {
@@ -284,19 +303,98 @@ void Splitflaps::enableSending(bool aEnable)
 }
 
 
+ssize_t Splitflaps::acceptExtraBytes(size_t aNumBytes, const uint8_t *aBytes)
+{
+  // got bytes with no command expecting them in particular
+  if (LOGENABLED(LOG_INFO)) {
+    string m;
+    for (size_t i=0; i<aNumBytes; i++) {
+      string_format_append(m, " %02X", aBytes[i]);
+    }
+    OLOG(LOG_NOTICE, "received extra bytes:%s", m.c_str());
+  }
+  return (ssize_t)aNumBytes;
+}
 
-size_t Splitflaps::sbbTransmitter(size_t aNumBytes, const uint8_t *aBytes)
+
+
+// MARK: ==== common splitflaps operation API
+
+
+void Splitflaps::initOperation()
+{
+  if (mSimulation) {
+    OLOG(LOG_WARNING, "Simulation only, no output to serial interface!");
+  }
+  else {
+    // open connection so we can receive from start
+    if (mSbbSerial.mSerialComm->requestConnection()) {
+      mSbbSerial.mSerialComm->setRTS(false); // not sending
+    }
+    else {
+      OLOG(LOG_WARNING, "Could not open serial connection");
+    }
+  }
+  // anyway, start operation
+  if (mInterfaceType==interface_rs485bus) {
+    initBusOperation();
+  }
+  else if (mInterfaceType==interface_omegacontroller) {
+    initCtrlOperation();
+  }
+  setInitialized();
+}
+
+
+
+void Splitflaps::setModuleValue(uint16_t aModuleAddr, SbbModuleType aType, uint8_t aValue)
+{
+  if (mInterfaceType==interface_rs485bus) {
+    setModuleValueBus((uint8_t)aModuleAddr, aType, aValue);
+  }
+  else if (mInterfaceType==interface_omegacontroller) {
+    setModuleValueCtrl(aModuleAddr / 100, aModuleAddr % 100, aType, aValue);
+  }
+}
+
+
+
+void Splitflaps::sendRawCommand(const string aCommand, size_t aExpectedBytes, SBBResultCB aResultCB, MLMicroSeconds aInitiationDelay)
+{
+  if (mInterfaceType==interface_rs485bus) {
+    sendRawBusCommand(aCommand, aExpectedBytes, aResultCB, aInitiationDelay);
+  }
+  else if (mInterfaceType==interface_omegacontroller) {
+    sendRawCtrlCommand(aCommand, aResultCB);
+  }
+}
+
+
+
+// MARK: - RS485 bus modules
+
+
+// SBB RS485 protocol
+#define SBB_SYNCBYTE 0xFF // all commands start with this
+#define SBB_CMD_SETPOS 0xC0 // set position
+#define SBB_CMD_GETPOS 0xD0 // get position
+#define SBB_CMD_GETSERIAL 0xDF // get serial number
+
+
+void Splitflaps::initBusOperation()
+{
+  // we need a non-standard transmitter
+  mSbbSerial.setTransmitter(boost::bind(&Splitflaps::sbbBusTransmitter, this, _1, _2));
+}
+
+
+
+size_t Splitflaps::sbbBusTransmitter(size_t aNumBytes, const uint8_t *aBytes)
 {
   ssize_t res = 0;
   ErrorPtr err = mSbbSerial.mSerialComm->establishConnection();
   if (Error::isOK(err)) {
-    if (LOGENABLED(LOG_NOTICE)) {
-      string m;
-      for (size_t i=0; i<aNumBytes; i++) {
-        string_format_append(m, " %02X", aBytes[i]);
-      }
-      OLOG(LOG_NOTICE, "transmitting bytes:%s", m.c_str());
-    }
+    OLOG(LOG_NOTICE, "transmitting bytes: %s", dataToHexString(aBytes, aNumBytes, ' ').c_str());
     // enable sending
     enableSending(true);
     // send break
@@ -313,8 +411,16 @@ size_t Splitflaps::sbbTransmitter(size_t aNumBytes, const uint8_t *aBytes)
 }
 
 
-void Splitflaps::sendRawCommand(const string aCommand, size_t aExpectedBytes, SBBResultCB aResultCB, MLMicroSeconds aInitiationDelay)
+#define STANDARD_INITIATION_DELAY (0.2*Second)
+
+void Splitflaps::sendRawBusCommand(const string aCommand, size_t aExpectedBytes, SBBResultCB aResultCB, MLMicroSeconds aInitiationDelay)
 {
+  if (mSimulation) {
+    OLOG(LOG_NOTICE, "Simulation only, NOT sending command: %s", binaryToHexString(aCommand, ' ').c_str());
+    if (aResultCB) aResultCB("", ErrorPtr());
+    return; // NOP
+  }
+  if (aInitiationDelay<0) aInitiationDelay = STANDARD_INITIATION_DELAY;
   OLOG(LOG_INFO, "Posting command (size=%zu)", aCommand.size());
   SerialOperationSendPtr req = SerialOperationSendPtr(new SerialOperationSend);
   req->setDataSize(aCommand.size());
@@ -323,13 +429,13 @@ void Splitflaps::sendRawCommand(const string aCommand, size_t aExpectedBytes, SB
   if (aExpectedBytes>0) {
     // we expect some answer bytes
     SerialOperationReceivePtr resp = SerialOperationReceivePtr(new SerialOperationReceive);
-    resp->setCompletionCallback(boost::bind(&Splitflaps::sbbCommandComplete, this, aResultCB, resp, _1));
+    resp->setCompletionCallback(boost::bind(&Splitflaps::sbbBusCommandComplete, this, aResultCB, resp, _1));
     resp->setExpectedBytes(aExpectedBytes);
     resp->setTimeout(2*Second);
     req->setChainedOperation(resp);
   }
   else {
-    req->setCompletionCallback(boost::bind(&Splitflaps::sbbCommandComplete, this, aResultCB, SerialOperationPtr(), _1));
+    req->setCompletionCallback(boost::bind(&Splitflaps::sbbBusCommandComplete, this, aResultCB, SerialOperationPtr(), _1));
   }
   mSbbSerial.queueSerialOperation(req);
   // process operations
@@ -337,7 +443,7 @@ void Splitflaps::sendRawCommand(const string aCommand, size_t aExpectedBytes, SB
 }
 
 
-void Splitflaps::sbbCommandComplete(SBBResultCB aResultCB, SerialOperationPtr aSerialOperation, ErrorPtr aError)
+void Splitflaps::sbbBusCommandComplete(SBBResultCB aResultCB, SerialOperationPtr aSerialOperation, ErrorPtr aError)
 {
   OLOG(LOG_INFO, "Command complete");
   string result;
@@ -351,7 +457,7 @@ void Splitflaps::sbbCommandComplete(SBBResultCB aResultCB, SerialOperationPtr aS
 }
 
 
-void Splitflaps::setModuleValue(uint8_t aModuleAddr, SbbModuleType aType, uint8_t aValue)
+void Splitflaps::setModuleValueBus(uint8_t aModuleAddr, SbbModuleType aType, uint8_t aValue)
 {
   uint8_t pos;
   switch (aType) {
@@ -401,22 +507,154 @@ void Splitflaps::setModuleValue(uint8_t aModuleAddr, SbbModuleType aType, uint8_
   string poscmd = "\xFF\xC0";
   poscmd += (char)aModuleAddr;
   poscmd += (char)pos;
-  sendRawCommand(poscmd, 0, NoOP);
+  sendRawBusCommand(poscmd, 0, NoOP, -1 /* default */);
 }
 
 
-ssize_t Splitflaps::acceptExtraBytes(size_t aNumBytes, const uint8_t *aBytes)
+// MARK: Omega Controller
+
+void Splitflaps::initCtrlOperation()
 {
-  // got bytes with no command expecting them in particular
+  // Set standard transmitter
+  mSbbSerial.setTransmitter(boost::bind(&SerialOperationQueue::standardTransmitter, &mSbbSerial, _1, _2));
+  // prepare buffer, fill with spaces
+  mOCtrlData.assign((mOCtrlLines+1)*(mOCtrlColumns+1), 0x20);
+  setCtrlDirty();
+}
+
+
+#define CTRL_UPDATING_DELAY (0.5*Second)
+
+void Splitflaps::setCtrlDirty()
+{
+  if (mOCtrlDirty) return; // already dirty, will get sent anyway
+  // not yet dirty, open a new update collection time window
+  mOCtrlDirty = true;
+  mOCtrlUpdater.cancel();
+  // schedule update to hardware
+  mOCtrlUpdater.executeOnce(boost::bind(&Splitflaps::updateCtrlDisplay, this), CTRL_UPDATING_DELAY);
+}
+
+
+void Splitflaps::sendCtrlCommand(const char *aCmd, SBBResultCB aResultCB)
+{
+  // general format is ^A ^R moduleaddress ^B actual command ^D
+  string msg = string_format("\x01\x12%03d\x02%s\x04", mOCtrlAddress, aCmd);
+  sendRawCtrlCommand(msg.c_str(), aResultCB);
+}
+
+
+void Splitflaps::updateCtrlDisplay()
+{
+  if (mOCtrlDirty) {
+    mOCtrlDirty = false;
+    string msg = "\x08"; // ^H - go to beginning of "screen"
+    for (int l=0; l<mOCtrlLines; ++l) {
+      for (int c=0; c<mOCtrlColumns; ++c) {
+        msg += mOCtrlData[l*mOCtrlColumns+c];
+      }
+      if (l<mOCtrlLines-1) msg+='\x0A'; // ^J go to next "line"
+    }
+    sendCtrlCommand(msg.c_str(), NoOP);
+  }
+}
+
+
+void Splitflaps::sendRawCtrlCommand(const string aCommand, SBBResultCB aResultCB)
+{
+  size_t numBytes = aCommand.size();
   if (LOGENABLED(LOG_INFO)) {
     string m;
-    for (size_t i=0; i<aNumBytes; i++) {
-      string_format_append(m, " %02X", aBytes[i]);
+    for (size_t i=0; i<numBytes; i++) {
+      if (aCommand[i]>=0x20) {
+        m += aCommand[i];
+      }
+      else {
+        m += "^";
+        m += aCommand[i]+'A'-1;
+      }
     }
-    OLOG(LOG_NOTICE, "received extra bytes:%s", m.c_str());
+    OLOG(LOG_INFO, "transmitting command: %s", m.c_str());
   }
-  return (ssize_t)aNumBytes;
+  if (mSimulation) {
+    if (aResultCB) aResultCB("", ErrorPtr());
+    OLOG(LOG_INFO, "Simulated command complete");
+    return; // NOP
+  }
+  OLOG(LOG_INFO, "Posting command");
+  SerialOperationSendPtr op = SerialOperationSendPtr(new SerialOperationSend);
+  op->setDataSize(numBytes);
+  op->appendData(numBytes, (uint8_t*)aCommand.c_str());
+  op->setCompletionCallback(boost::bind(&Splitflaps::sbbCtrlCommandComplete, this, aResultCB, _1));
+  mSbbSerial.queueSerialOperation(op);
+  // process operations
+  mSbbSerial.processOperations();
 }
+
+
+void Splitflaps::sbbCtrlCommandComplete(SBBResultCB aResultCB, ErrorPtr aError)
+{
+  OLOG(LOG_INFO, "Command complete");
+  if (aResultCB) aResultCB("", aError);
+}
+
+
+void Splitflaps::setModuleValueCtrl(uint8_t aLine, uint8_t aColumn, SbbModuleType aType, uint8_t aValue)
+{
+  if (aLine>=mOCtrlLines || aColumn>=mOCtrlLines) return;
+  uint8_t val;
+  switch (aType) {
+    case moduletype_alphanum :
+      // use characters as-is. Modules can display A-Z, ', -, 0-9
+      val = aValue<0x20 ? 0x20 : aValue;
+      break;
+    case moduletype_hour :
+      // hours 0..23 are represented by A..X, >23 = space
+      val = aValue>23 ? 0x20 : 'A'+aValue;
+      break;
+    case moduletype_minute :
+      // minutes 0..30 are represented by A-Z,[\]^_
+      // minutes 31..59 are represented by !..=
+      // >59 = space
+      val = aValue>59 ? 0x20 : (aValue<31 ? 'A'+aValue : '!'+(aValue-31));
+      break;
+    case moduletype_40 :
+      // position 0 is represented by space
+      // positions 1..26 are represented by A-Z
+      // position 27 is represented by ' (apostrophe, single quote)
+      // position 28 is represented by - (minus, dash)
+      // position 29-37 are represented by 1..9
+      // position 38 is represented by 0
+      // position 39 is represented by ???? (unknown at this time)
+      if (aValue==0)
+        val = 0x20;
+      else if (aValue<=26)
+        val = 'A'+(aValue-1);
+      else if (aValue==27)
+        val = '\'';
+      else if (aValue==28)
+        val = '-';
+      else if (aValue<=37)
+        val = '1'+(aValue-29);
+      else if (aValue==38)
+        val = '0';
+      else
+        val = 0x20; // 39 is missing so far!
+      break;
+    case moduletype_62 :
+      // positions 0..30 are represented by ASCII Space..>
+      // positions 31..61 are represented by ASCII A.._
+      val = aValue<31 ? 0x20+aValue : 'A'+(aValue-31);
+      break;
+  }
+  size_t bufPos = aLine*mOCtrlColumns+aColumn;
+  if (val!=mOCtrlData[bufPos]) {
+    mOCtrlData[bufPos] = val;
+    setCtrlDirty();
+  }
+}
+
+
 
 
 #endif // ENABLE_FEATURE_SPLITFLAPS

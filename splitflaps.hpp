@@ -45,7 +45,7 @@ namespace p44 {
   public:
     SplitflapModule() { mAddr = 0; mType = moduletype_62; }
     string mName;
-    int mAddr;
+    uint16_t mAddr; ///< for RS485 bus modules: the module's address, for Omega Controller: 100*line + char
     SbbModuleType mType;
   };
 
@@ -55,6 +55,13 @@ namespace p44 {
     typedef Feature inherited;
 
     SerialOperationQueue mSbbSerial; ///< the serial communication with the SBB splitflap modules
+
+    bool mSimulation; ///< if set, simulate only, no RS485 output
+
+    enum {
+      interface_rs485bus,
+      interface_omegacontroller
+    } mInterfaceType;
 
     DigitalIoPtr mTxEnable;
     DigitalIoPtr mRxEnable;
@@ -69,6 +76,13 @@ namespace p44 {
 
     typedef std::vector<SplitflapModule> SplitFlapModuleVector;
     SplitFlapModuleVector mSplitflapModules;
+
+    int mOCtrlAddress; ///< the Omega Controller Address
+    uint16_t mOCtrlLines; ///< number of pseudo-terminal "lines"
+    uint16_t mOCtrlColumns; ///< number of pseudo-terminal "columns"
+    string mOCtrlData; ///< pseudo terminal data buffer
+    bool mOCtrlDirty; ///< set when buffer needs to be re-sent
+    MLTicket mOCtrlUpdater;
 
   public:
 
@@ -101,28 +115,45 @@ namespace p44 {
     /// @return status information object for initialized feature, bool false for uninitialized
     virtual JsonObjectPtr status() override;
 
-    /// send raw command (starting with BREAK)
-    void sendRawCommand(const string aCommand, size_t aExpectedBytes, SBBResultCB aResultCB, MLMicroSeconds aInitiationDelay=0.2*Second);
+    /// send raw command
+    void sendRawCommand(const string aCommand, size_t aExpectedBytes, SBBResultCB aResultCB, MLMicroSeconds aInitiationDelay);
 
     /// set the value to display in a module
     /// @param aModuleAddr the module address
+    ///   - for RS485 bus modules, the module's address
+    ///   - for Omega Controller, 100*line + char
     /// @param aType the module type, controls value->position transformation
     /// @param aValue the value to show.
-    void setModuleValue(uint8_t aModuleAddr, SbbModuleType aType, uint8_t aValue);
+    void setModuleValue(uint16_t aModuleAddr, SbbModuleType aType, uint8_t aValue);
 
   private:
 
     void initOperation();
 
-    size_t sbbTransmitter(size_t aNumBytes, const uint8_t *aBytes);
-    void enableSending(bool aEnable);
-    void enableSendingImmediate(bool aEnable);
-
-    ssize_t acceptExtraBytes(size_t aNumBytes, const uint8_t *aBytes);
-
-    void sbbCommandComplete(SBBResultCB aStatusCB, SerialOperationPtr aSerialOperation, ErrorPtr aError);
+    void initBusOperation();
+    void initCtrlOperation();
 
     void rawCommandAnswer(ApiRequestPtr aRequest, const string &aResponse, ErrorPtr aError);
+
+    void enableSending(bool aEnable);
+    void enableSendingImmediate(bool aEnable);
+    ssize_t acceptExtraBytes(size_t aNumBytes, const uint8_t *aBytes);
+
+    /// RS485 Bus
+    size_t sbbBusTransmitter(size_t aNumBytes, const uint8_t *aBytes);
+    void sendRawBusCommand(const string aCommand, size_t aExpectedBytes, SBBResultCB aResultCB, MLMicroSeconds aInitiationDelay);
+    void sbbBusCommandComplete(SBBResultCB aResultCB, SerialOperationPtr aSerialOperation, ErrorPtr aError);
+    void setModuleValueBus(uint8_t aModuleAddr, SbbModuleType aType, uint8_t aValue);
+
+    /// Omega Controller
+    void sendRawCtrlCommand(const string aCommand, SBBResultCB aResultCB);
+    void sbbCtrlCommandComplete(SBBResultCB aResultCB, ErrorPtr aError);
+    void setModuleValueCtrl(uint8_t aLine, uint8_t aColumn, SbbModuleType aType, uint8_t aValue);
+    void sendCtrlCommand(const char *aCmd, SBBResultCB aResultCB);
+    void setCtrlDirty();
+    void updateCtrlDisplay();
+
+
   };
 
 } // namespace p44
