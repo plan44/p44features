@@ -43,7 +43,7 @@ namespace p44 {
   class SplitflapModule
   {
   public:
-    SplitflapModule() { mAddr = 0; mType = moduletype_62; mLastSentValue = ' '; }
+    SplitflapModule() { mAddr = 0; mType = moduletype_62; mLastSentValue = 0; }
     string mName;
     uint16_t mAddr; ///< for RS485 bus modules: the module's address, for Omega Controller: 100*line + char
     SbbModuleType mType;
@@ -121,11 +121,12 @@ namespace p44 {
 
     /// set the value to display in a module
     /// @param aSplitFlapModule the module
-    /// @param aValue the value to show.
+    /// @param aValue the value to show. >=0x7F means empty, for alphanum, aValue is ASCII, for hour/minute aValue=number, for 40/62 aValue=flap number
     void setModuleValue(SplitflapModule& aSplitFlapModule, uint8_t aValue);
 
     /// get the value from a module (or its cache)
     /// @param aSplitFlapModule the module
+    /// @return the current value 
     uint8_t getModuleValue(SplitflapModule& aSplitFlapModule);
 
   private:

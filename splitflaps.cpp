@@ -349,6 +349,10 @@ void Splitflaps::initOperation()
   else if (mInterfaceType==interface_omegacontroller) {
     initCtrlOperation();
   }
+  // actively set all flaps to empty
+  for (SplitFlapModuleVector::iterator mpos = mSplitflapModules.begin(); mpos!=mSplitflapModules.end(); ++mpos) {
+    setModuleValue(*mpos, 0x7F); // 0x7F means empty in all module types
+  }
   setInitialized();
 }
 
@@ -494,16 +498,16 @@ void Splitflaps::setModuleValueBus(uint8_t aModuleAddr, SbbModuleType aType, uin
         pos = 38;
       }
       else {
-        // everything else: space
+        // everything else, including >=0x7F: space
         pos = 39;
       }
       break;
     case moduletype_hour :
-      // hours 0..23, >23 = space
+      // hours 0..23, >23, including 0x7F = space
       pos = aValue>23 ? 24 : aValue;
       break;
     case moduletype_minute :
-      // 0..59, >59 = space
+      // 0..59, >59, including 0x7F = space
       // pos 0..28 are minutes 31..59
       // pos 29 is space
       // pos 30..60 are minutes 00..30
@@ -512,8 +516,8 @@ void Splitflaps::setModuleValueBus(uint8_t aModuleAddr, SbbModuleType aType, uin
       break;
     case moduletype_40 :
     case moduletype_62 :
-      // just use as-is
-      pos = aValue;
+      // just use as-is, except >=0x7F -> 0 (which is usually empty)
+      pos = aValue>=0x7F ? 0 : aValue;
       break;
   }
   string poscmd = "\xFF\xC0";
@@ -617,28 +621,28 @@ void Splitflaps::setModuleValueCtrl(uint8_t aLine, uint8_t aColumn, SbbModuleTyp
   uint8_t val;
   switch (aType) {
     case moduletype_alphanum :
-      // use characters as-is. Modules can display A-Z, ', -, 0-9
-      val = aValue<0x20 ? 0x20 : aValue;
+      // use characters as-is. Modules can display A-Z, ', -, 0-9. >=0x7F is always space
+      val = aValue<0x20 || aValue>=0x7F ? 0x20 : aValue;
       break;
     case moduletype_hour :
-      // hours 0..23 are represented by A..X, >23 = space
+      // hours 0..23 are represented by A..X, >23, including 0x7F = space
       val = aValue>23 ? 0x20 : 'A'+aValue;
       break;
     case moduletype_minute :
       // minutes 0..30 are represented by A-Z,[\]^_
       // minutes 31..59 are represented by !..=
-      // >59 = space
+      // >59, including 0x7F = space
       val = aValue>59 ? 0x20 : (aValue<31 ? 'A'+aValue : '!'+(aValue-31));
       break;
     case moduletype_40 :
-      // position 0 is represented by space
+      // position 0 (and >=0x7F) is represented by space
       // positions 1..26 are represented by A-Z
       // position 27 is represented by ' (apostrophe, single quote)
       // position 28 is represented by - (minus, dash)
       // position 29-37 are represented by 1..9
       // position 38 is represented by 0
       // position 39 is represented by ???? (unknown at this time)
-      if (aValue==0)
+      if (aValue==0 || aValue>=0x7F)
         val = 0x20;
       else if (aValue<=26)
         val = 'A'+(aValue-1);
@@ -656,7 +660,8 @@ void Splitflaps::setModuleValueCtrl(uint8_t aLine, uint8_t aColumn, SbbModuleTyp
     case moduletype_62 :
       // positions 0..30 are represented by ASCII Space..>
       // positions 31..61 are represented by ASCII A.._
-      val = aValue<31 ? 0x20+aValue : 'A'+(aValue-31);
+      if (aValue>=0x7F) val = ' '; // >=0x7F = empty
+      else val = aValue<31 ? 0x20+aValue : 'A'+(aValue-31);
       break;
   }
   size_t bufPos = aLine*mOCtrlColumns+aColumn;
