@@ -1,13 +1,13 @@
 p44features
 ===========
 
-*[[if you want to support p44features development, please consider to sponsor plan44]](https://github.com/sponsors/plan44)* 
+*[[if you want to support p44features development, please consider to sponsor plan44]](https://github.com/sponsors/plan44)*
 
 *p44features* is a set of free (opensource, GPLv3) C++ classes and functions building a library of "features" for various applications in exhibitions, experiments, art and fun projects. Each "feature" usually drives a particular piece of hardware, such as LEDs, RFIDs, Swiss Railway Splitflap modules, sensors etc. The features have a common base class and are accessible via a common JSON API. When used in applications with [p44script](https://plan44.ch/p44-techdocs/en/#topics) enabled, these features can also be controller from on-devices scripts. Likewise, the feature JSON api can be extended to implement additional *features* in p44script using the `featurecall()` event source.
 
 *p44features* needs some classes and functions from the [*p44utils*](https://github.com/plan44/p44utils) and [*p44lrgraphics*](https://github.com/plan44/p44lrgraphics) libraries.
 
-Projects using p44features (or cointaining roots that led to it) include 
+Projects using p44features (or cointaining roots that led to it) include
 the [ETH digital platform](https://plan44.ch/custom#leth), the "chatty wifi" installation I brought to the 35c3, the "hermeldon 2018" remote crocket playing installation (both in the [*hermel* branch of *lethd*](https://github.com/plan44/lethd/tree/hermeld)), the exhibition [Auf der Suche nach der Wahrheit](https://suchewahrheit.ch/web/de-ch/) with hundreds of RFID readers. The p44features are also integrated in the [vdcd](https://plan44.ch/opensource/vdcd) project and thus available in the [p44-xx-open (home)automation platform](https://github.com/plan44/p44-xx-open), which allows for interesting augmentation of home automation and lighting systems.
 
 
@@ -24,7 +24,6 @@ License
 
 p44features are licensed under the GPLv3 License (see COPYING).
 
-If that's a problem for your particular application, I am open to provide a commercial license, please contact me at [luz@plan44.ch](mailto:luz@plan44.ch).
 
 Features
 --------
@@ -36,7 +35,7 @@ List of currently available features, will expand with the demands of new projec
 - **dispmatrix**: time synchronized LED matrix displays for large scrolling text display
 - **inputs**: use any GPIO, or pins of some i2c/spi based I/O extensions, or console keys for simulation, as generic inputs
 - **light**: simple PWM light dimmer
-- **splitflaps**: Splitflap displays (as produced by Omega for Swiss Railways (SBB) and also other railways, such as Deutsche Bahn). Both older setups with a central RS422 connected controller board ("Omega controller") driving a dozen or more non-smart splitflap modules, as well as the newer RS485 bus connected modules with a µP controller on each module are supported. 
+- **splitflaps**: Splitflap displays (as produced by Omega for Swiss Railways (SBB) and also other railways, such as Deutsche Bahn). Both older setups with a central RS422 connected controller board ("Omega controller") driving a dozen or more non-smart splitflap modules, as well as the newer RS485 bus connected modules with a µP controller on each module are supported.
 - **neuron**: sensor triggered "conductance" light effect
 - **mixloop**: accelerometer triggered ball movement detector and light effect
 - **wifitrack**: visualizing WiFi SSIDs revealed to the public in probe requests
@@ -208,7 +207,7 @@ For individual modules connected to RS485 bus:
 - The "modules" array defines the splitflaps to be used.
 - *name* is a handle for the module to access it with the *position* command later (see below).
 - *module_address* is the module address of the splitflap module (for SBB (Swiss Railways) modules, usually written onto a yellow sticker on the module itself, but as the address can be reprogrammed, the sticker might not be correct in all cases).
-- the "type" field specifies the module kind. *hour* and *minute* are basically the same as *40* and *62*, however the flap indices are made to match the actual numerical display (the flaps are not in strict ascending order in those modules). *40* and *62* are for generic modules with 40 and 62 flaps, resp. 
+- the "type" field specifies the module kind. *hour* and *minute* are basically the same as *40* and *62*, however the flap indices are made to match the actual numerical display (the flaps are not in strict ascending order in those modules). *40* and *62* are for generic modules with 40 and 62 flaps, resp.
 
 
 For older modules connected via a "omega controller" board:
