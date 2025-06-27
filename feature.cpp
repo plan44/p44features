@@ -194,7 +194,7 @@ static const BuiltinMemberDescriptor featureMembers[] = {
   FUNC_DEF_NOARG(reset, executable|null|error),
   FUNC_DEF_W_ARG(cmd, executable|async|anyvalid|error),
   FUNC_DEF_W_ARG(set, executable|async|anyvalid|error),
-  { NULL } // terminator
+  BUILTINS_TERMINATOR
 };
 
 

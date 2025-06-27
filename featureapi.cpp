@@ -884,7 +884,7 @@ static const BuiltinMemberDescriptor featureApiGlobals[] = {
   FUNC_DEF_W_ARG(feature, executable|anyvalid),
   FUNC_DEF_W_ARG(featurecall, executable|value|null),
   FUNC_DEF_W_ARG(featureevent, executable|value|null),
-  { NULL } // terminator
+  BUILTINS_TERMINATOR
 };
 
 FeatureApiLookup::FeatureApiLookup() :
