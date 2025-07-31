@@ -99,6 +99,7 @@ namespace p44 {
     public:
       FeatureObj(FeaturePtr aFeature);
       virtual string getAnnotation() const P44_OVERRIDE { return "feature"; };
+      virtual P44LoggingObj* loggingContext() const P44_OVERRIDE { return mFeature.get(); };
       FeaturePtr feature() { return mFeature; }
     };
 
