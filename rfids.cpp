@@ -222,7 +222,7 @@ void RFIDs::rfidDetected(int aReaderIndex, const string aRFIDnUID)
     mRfidPollingThread->signalParentThread(threadSignalUserSignal);
     return;
   }
-  #endif
+  #endif // IN_THREAD
   sendEventMessage(message);
 }
 
@@ -264,7 +264,7 @@ void RFIDs::initOperation()
     );
     return;
   }
-  #endif
+  #endif // IN_THREAD
   // single threaded
   OLOG(LOG_NOTICE, "- Resetting all readers (single threaded)");
   resetReaders(boost::bind(&RFIDs::initReaders, this));

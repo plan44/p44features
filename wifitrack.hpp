@@ -31,6 +31,8 @@
 #include <math.h>
 #include <set>
 
+#define IN_THREAD 1
+
 namespace p44 {
 
   class WTMac;
@@ -163,10 +165,20 @@ namespace p44 {
     DispMatrixPtr mDisp;
     bool mLoadingContent;
 
+    #if IN_THREAD
+    bool mUseThread;
+    ChildThreadWrapperPtr mWifiTrackingThread;
+    JsonObjectPtr mEncounterMessage;
+    pthread_mutex_t mReportMutex;
+    #endif // IN_THREAD
+
   public:
 
     WifiTrack(const string aMonitorIf, int aRadiotapDBOffset, bool doStart);
     virtual ~WifiTrack();
+
+    /// reset the feature to uninitialized/re-initializable state
+    virtual void reset() override;
 
     /// initialize the feature
     /// @param aInitData the init data object specifying feature init details
@@ -210,6 +222,11 @@ namespace p44 {
 
     bool needContentHandler();
     void contentLoaded();
+
+    #if IN_THREAD
+    void wifiTrackingThread(ChildThreadWrapper &aThread);
+    void wifiTrackingThreadSignal(ChildThreadWrapper &aChildThread, ThreadSignals aSignalCode);
+    #endif
 
   };
 

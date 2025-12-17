@@ -78,7 +78,7 @@ namespace p44 {
     ChildThreadWrapperPtr mRfidPollingThread;
     JsonObjectPtr mDetectionMessage;
     pthread_mutex_t mReportMutex;
-    #endif
+    #endif // IN_THREAD
 
   public:
 

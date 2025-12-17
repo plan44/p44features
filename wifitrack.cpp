@@ -34,6 +34,9 @@
 
 #define WIFITRACK_STATE_FILE_NAME "wifitrack_state.json"
 
+#define FEATURE_NAME "wifitrack"
+
+
 using namespace p44;
 
 
@@ -86,7 +89,10 @@ WTPerson::WTPerson() :
 // MARK: ===== WifiTrack
 
 WifiTrack::WifiTrack(const string aMonitorIf, int aRadiotapDBOffset, bool doStart) :
-  inherited("wifitrack"),
+  inherited(FEATURE_NAME),
+  #if IN_THREAD
+  mUseThread(false),
+  #endif
   mDirectDisplay(true),
   mApiNotify(false),
   mMonitorIf(aMonitorIf),
@@ -121,9 +127,30 @@ WifiTrack::WifiTrack(const string aMonitorIf, int aRadiotapDBOffset, bool doStar
 }
 
 
+void WifiTrack::reset()
+{
+  OLOG(LOG_INFO,"Received reset command, request RFID polling termination")
+  #if IN_THREAD
+  if (mWifiTrackingThread) {
+    // make terminate (will do in background)
+    mWifiTrackingThread->disconnect();
+    mWifiTrackingThread->terminate();
+    mWifiTrackingThread.reset();
+    // forget this mutex, new thread will create a new one
+    pthread_mutex_destroy(&mReportMutex);
+    inherited::reset();
+    return;
+  }
+  #endif // IN_THREAD
+  inherited::reset();
+}
+
+
 WifiTrack::~WifiTrack()
 {
+  reset();
 }
+
 
 // MARK: ==== API
 
@@ -140,6 +167,11 @@ ErrorPtr WifiTrack::initialize(JsonObjectPtr aInitData)
   if (aInitData->get("radiotapDBoffs", o)) {
     mRadiotapDBOffset = o->int32Value();
   }
+  #if IN_THREAD
+  if (aInitData->get("trackingthread", o)) {
+    mUseThread = o->boolValue();
+  }
+  #endif
   initOperation();
   return Error::ok();
 }
@@ -784,8 +816,59 @@ void WifiTrack::initOperation()
   else {
     OLOG(LOG_ERR, "could not load state: %s", Error::text(err));
   }
+  #if IN_THREAD
+  if (mUseThread) {
+    // put entire wifi scanning into background thread
+    pthread_mutex_init(&mReportMutex, NULL);
+    mWifiTrackingThread = MainLoop::currentMainLoop().executeInThread(
+      boost::bind(&WifiTrack::wifiTrackingThread, this, _1),
+      boost::bind(&WifiTrack::wifiTrackingThreadSignal, this, _1, _2)
+    );
+    return;
+  }
+  #endif // IN_THREAD
+  // single threaded
+  OLOG(LOG_NOTICE, "- Starting wifi scanner (single threaded)");
   startScanner();
 }
+
+
+#if IN_THREAD
+
+void WifiTrack::wifiTrackingThread(ChildThreadWrapper &aThread)
+{
+  // create mainloop
+  OLOG(LOG_INFO, "Start of wifi tracking thread routine")
+  aThread.threadMainLoop();
+  // start scanner, will schedule first mainloop timers
+  startScanner();
+  // now start the thread's mainloop
+  aThread.threadMainLoop().run();
+  OLOG(LOG_INFO, "End of wifi tracking thread routine")
+}
+
+
+void WifiTrack::wifiTrackingThreadSignal(ChildThreadWrapper &aChildThread, ThreadSignals aSignalCode)
+{
+  OLOG(LOG_DEBUG, "Received signal from child thread: %d", aSignalCode);
+  if (aSignalCode==threadSignalUserSignal) {
+    // means a new RFID was detected
+    // - get the message object
+    pthread_mutex_lock(&mReportMutex);
+    JsonObjectPtr message = mEncounterMessage;
+    mEncounterMessage.reset();
+    pthread_mutex_unlock(&mReportMutex);
+    // - send it
+    sendEventMessage(message);
+  }
+  else if (aSignalCode==threadSignalCompleted) {
+    OLOG(LOG_INFO, "Tracking thread reports having ended");
+    mWifiTrackingThread.reset();
+  }
+}
+
+#endif // IN_THREAD
+
 
 
 
@@ -808,8 +891,9 @@ void WifiTrack::startScanner()
     OLOG(LOG_WARNING, "hardcoded access to mixloop/hermel/35c3 chatty wifi device");
     //#warning "hardcoded access to mixloop/hermel/35c3 chatty wifi device"
     //cmd = "ssh -p 22 root@hermel-40a36bc18907.local. \"tcpdump -e -i moni0 -s 2000 type mgt subtype probe-req\"";
-    cmd = "ssh -p 22 root@1a8479bcaf76.cust.devices.plan44.ch \"" + cmd + "\"";
-    #endif
+    //cmd = "ssh -p 22 root@1a8479bcaf76.cust.devices.plan44.ch \"" + cmd + "\""; // original chatty wifi hardware
+    cmd = "SSH_AUTH_SOCK=/private/tmp/com.apple.launchd.WLKxsPpKxd/Listeners SECURITYSESSIONID=186b3 /usr/bin/ssh -p 22 root@20bf65c5c362549f80922f97716abf8b00.p44lc.devices.plan44.ch \"" + cmd + "\""; // P44-xxm-mini 39c3 bluebox
+    #endif // __APPLE__
     int resultFd = -1;
     OLOG(LOG_NOTICE, "Starting tcpdump: %s", cmd.c_str());
     mDumpPid = MainLoop::currentMainLoop().fork_and_system(boost::bind(&WifiTrack::dumpEnded, this, _1), cmd.c_str(), true, &resultFd);
@@ -1208,6 +1292,11 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
 void WifiTrack::displayEncounter(string aIntro, int aImageIndex, PixelColor aColor, string aName, string aBrand, string aTarget)
 {
   if (mDirectDisplay && mDisp) {
+    if (mUseThread) {
+      OLOG(LOG_ERR, "direct display not possible in threaded scsanner mode");
+      return;
+    }
+    // Note: no direct display in threaded mode!
     MLMicroSeconds rst = mDisp->getRemainingScrollTime(true, true); // purge old views
     if (rst<mMaxDisplayDelay) {
       if (OLOGENABLED(LOG_INFO)) {
@@ -1250,6 +1339,16 @@ void WifiTrack::displayEncounter(string aIntro, int aImageIndex, PixelColor aCol
     personinfo->add("HASTARGET", JsonObject::newString(aTarget.size()>0 ? "1" : "0"));
     personinfo->add("TARGET", JsonObject::newString(aTarget));
     message->add("personinfo", personinfo);
+    #if IN_THREAD
+    if (mUseThread && mWifiTrackingThread) {
+      // detections runs in separate thread, must notify parent thread
+      pthread_mutex_lock(&mReportMutex);
+      mEncounterMessage = message;
+      pthread_mutex_unlock(&mReportMutex);
+      mWifiTrackingThread->signalParentThread(threadSignalUserSignal);
+      return;
+    }
+    #endif // IN_THREAD
     sendEventMessage(message);
   }
 }
