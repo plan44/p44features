@@ -87,29 +87,29 @@ WTPerson::WTPerson() :
 
 WifiTrack::WifiTrack(const string aMonitorIf, int aRadiotapDBOffset, bool doStart) :
   inherited("wifitrack"),
-  directDisplay(true),
-  apiNotify(false),
-  monitorIf(aMonitorIf),
-  dumpPid(-1),
-  rememberWithoutSsid(false),
-  ouiNames(true),
-  minShowInterval(3*Minute),
-  minRssi(-80),
+  mDirectDisplay(true),
+  mApiNotify(false),
+  mMonitorIf(aMonitorIf),
+  mDumpPid(-1),
+  mRememberWithoutSsid(false),
+  mOuiNames(true),
+  mMinShowInterval(3*Minute),
+  mMinRssi(-80),
   mRadiotapDBOffset(0x16), // correct value for mt76 on Openwrt 19.07, must be 0x1E on Openwrt 22.03
-  reportSightings(false),
-  aggregatePersons(true),
-  scanBeacons(true),
-  minProcessRssi(-99),
-  minShowRssi(-65),
-  tooCommonMacCount(20),
-  minCommonSsidCount(3),
-  numPersonImages(24),
-  maxDisplayDelay(21*Second),
-  saveTempInterval(10*Minute),
-  saveDataInterval(7*Day),
-  lastTempAutoSave(Never),
-  lastDataAutoSave(Never),
-  loadingContent(false)
+  mReportSightings(false),
+  mAggregatePersons(true),
+  mScanBeacons(true),
+  mMinProcessRssi(-99),
+  mMinShowRssi(-65),
+  mTooCommonMacCount(20),
+  mMinCommonSsidCount(3),
+  mNumPersonImages(24),
+  mMaxDisplayDelay(21*Second),
+  mSaveTempInterval(10*Minute),
+  mSaveDataInterval(7*Day),
+  mLastTempAutoSave(Never),
+  mLastDataAutoSave(Never),
+  mLoadingContent(false)
 {
   if (aRadiotapDBOffset>0) {
     mRadiotapDBOffset = aRadiotapDBOffset;
@@ -132,10 +132,10 @@ ErrorPtr WifiTrack::initialize(JsonObjectPtr aInitData)
   reset();
   JsonObjectPtr o;
   if (aInitData->get("directDisplay", o)) {
-    directDisplay = o->boolValue();
+    mDirectDisplay = o->boolValue();
   }
   if (aInitData->get("apiNotify", o)) {
-    apiNotify = o->boolValue();
+    mApiNotify = o->boolValue();
   }
   if (aInitData->get("radiotapDBoffs", o)) {
     mRadiotapDBOffset = o->int32Value();
@@ -189,7 +189,7 @@ ErrorPtr WifiTrack::processRequest(ApiRequestPtr aRequest)
       if (data->get("brand", o)) brand = o->stringValue();
       if (data->get("target", o)) target = o->stringValue();
       int imgIdx = 0;
-      if (data->get("imgidx", o)) imgIdx = o->int32Value() % numPersonImages;
+      if (data->get("imgidx", o)) imgIdx = o->int32Value() % mNumPersonImages;
       PixelColor col = white;
       if (data->get("color", o)) col = webColorToPixel(o->stringValue());
       displayEncounter(intro, imgIdx, col, name, brand, target);
@@ -200,15 +200,15 @@ ErrorPtr WifiTrack::processRequest(ApiRequestPtr aRequest)
       if (data->get("hide", o)) hide = o->boolValue();
       if (data->get("ssid", o)) {
         string s = o->stringValue();
-        WTSSidMap::iterator pos = ssids.find(s);
-        if (pos!=ssids.end()) {
+        WTSSidMap::iterator pos = mSsids.find(s);
+        if (pos!=mSsids.end()) {
           pos->second->hidden = hide;
         }
       }
       else if (data->get("mac", o)) {
         uint64_t mac = stringToMacAddress(o->stringValue().c_str());
-        WTMacMap::iterator pos = macs.find(mac);
-        if (pos!=macs.end()) {
+        WTMacMap::iterator pos = mMacs.find(mac);
+        if (pos!=mMacs.end()) {
           if (data->get("withperson", o)) {
             if (pos->second->person && o->boolValue()) pos->second->person->hidden = hide; // hide associated person
           }
@@ -220,8 +220,8 @@ ErrorPtr WifiTrack::processRequest(ApiRequestPtr aRequest)
     else if (cmd=="rename") {
       if (data->get("mac", o)) {
         uint64_t mac = stringToMacAddress(o->stringValue().c_str());
-        WTMacMap::iterator pos = macs.find(mac);
-        if (pos!=macs.end() && pos->second->person) {
+        WTMacMap::iterator pos = mMacs.find(mac);
+        if (pos!=mMacs.end() && pos->second->person) {
           if (data->get("name", o)) {
             pos->second->person->name = o->stringValue();
           }
@@ -229,7 +229,7 @@ ErrorPtr WifiTrack::processRequest(ApiRequestPtr aRequest)
             pos->second->person->color = webColorToPixel(o->stringValue());
           }
           if (data->get("imgidx", o)) {
-            pos->second->person->imageIndex = o->int32Value() % numPersonImages;
+            pos->second->person->imageIndex = o->int32Value() % mNumPersonImages;
           }
         }
       }
@@ -246,57 +246,57 @@ ErrorPtr WifiTrack::processRequest(ApiRequestPtr aRequest)
   else {
     // decode properties
     if (data->get("minShowInterval", o, true)) {
-      minShowInterval = o->doubleValue()*Second;
+      mMinShowInterval = o->doubleValue()*Second;
     }
     if (data->get("rememberWithoutSsid", o, true)) {
-      rememberWithoutSsid = o->boolValue();
+      mRememberWithoutSsid = o->boolValue();
     }
     if (data->get("ouiNames", o, true)) {
-      ouiNames = o->boolValue();
+      mOuiNames = o->boolValue();
     }
     if (data->get("reportSightings", o)) {
-      reportSightings = o->boolValue();
+      mReportSightings = o->boolValue();
     }
     if (data->get("aggregatePersons", o)) {
-      aggregatePersons = o->boolValue();
+      mAggregatePersons = o->boolValue();
     }
     if (data->get("minProcessRssi", o, true)) {
-      minProcessRssi = o->int32Value();
+      mMinProcessRssi = o->int32Value();
     }
     if (data->get("minRssi", o, true)) {
       int i = o->int32Value();
-      if (i!=minRssi) {
-        minRssi = i;
+      if (i!=mMinRssi) {
+        mMinRssi = i;
         restartScanner();
       }
     }
     if (data->get("scanBeacons", o, true)) {
       bool b = o->boolValue();
-      if (b!=scanBeacons) {
-        scanBeacons = b;
+      if (b!=mScanBeacons) {
+        mScanBeacons = b;
         restartScanner();
       }
     }
     if (data->get("minShowRssi", o, true)) {
-      minShowRssi = o->int32Value();
+      mMinShowRssi = o->int32Value();
     }
     if (data->get("tooCommonMacCount", o, true)) {
-      tooCommonMacCount = o->int32Value();
+      mTooCommonMacCount = o->int32Value();
     }
     if (data->get("minCommonSsidCount", o, true)) {
-      minCommonSsidCount = o->int32Value();
+      mMinCommonSsidCount = o->int32Value();
     }
     if (data->get("numPersonImages", o, true)) {
-      numPersonImages = o->int32Value();
+      mNumPersonImages = o->int32Value();
     }
     if (data->get("maxDisplayDelay", o, true)) {
-      maxDisplayDelay = o->doubleValue()*Second;
+      mMaxDisplayDelay = o->doubleValue()*Second;
     }
     if (data->get("saveTempInterval", o, true)) {
-      saveTempInterval = o->doubleValue()*Second;
+      mSaveTempInterval = o->doubleValue()*Second;
     }
     if (data->get("saveDataInterval", o, true)) {
-      saveDataInterval = o->doubleValue()*Second;
+      mSaveDataInterval = o->doubleValue()*Second;
     }
     return err ? err : Error::ok();
   }
@@ -307,25 +307,25 @@ JsonObjectPtr WifiTrack::status()
 {
   JsonObjectPtr answer = inherited::status();
   if (answer->isType(json_type_object)) {
-    answer->add("minShowInterval", JsonObject::newDouble((double)minShowInterval/Second));
-    answer->add("rememberWithoutSsid", JsonObject::newBool(rememberWithoutSsid));
-    answer->add("ouiNames", JsonObject::newBool(ouiNames));
-    answer->add("reportSightings", JsonObject::newBool(reportSightings));
-    answer->add("aggregatePersons", JsonObject::newBool(aggregatePersons));
-    answer->add("minRssi", JsonObject::newInt32(minRssi));
-    answer->add("scanBeacons", JsonObject::newBool(scanBeacons));
-    answer->add("minProcessRssi", JsonObject::newInt32(minProcessRssi));
-    answer->add("minShowRssi", JsonObject::newInt32(minShowRssi));
-    answer->add("tooCommonMacCount", JsonObject::newInt32(tooCommonMacCount));
-    answer->add("minCommonSsidCount", JsonObject::newInt32(minCommonSsidCount));
-    answer->add("numPersonImages", JsonObject::newInt32(numPersonImages));
-    answer->add("maxDisplayDelay", JsonObject::newDouble((double)maxDisplayDelay/Second));
-    answer->add("saveTempInterval", JsonObject::newDouble((double)saveTempInterval/Second));
-    answer->add("saveDataInterval", JsonObject::newDouble((double)saveDataInterval/Second));
+    answer->add("minShowInterval", JsonObject::newDouble((double)mMinShowInterval/Second));
+    answer->add("rememberWithoutSsid", JsonObject::newBool(mRememberWithoutSsid));
+    answer->add("ouiNames", JsonObject::newBool(mOuiNames));
+    answer->add("reportSightings", JsonObject::newBool(mReportSightings));
+    answer->add("aggregatePersons", JsonObject::newBool(mAggregatePersons));
+    answer->add("minRssi", JsonObject::newInt32(mMinRssi));
+    answer->add("scanBeacons", JsonObject::newBool(mScanBeacons));
+    answer->add("minProcessRssi", JsonObject::newInt32(mMinProcessRssi));
+    answer->add("minShowRssi", JsonObject::newInt32(mMinShowRssi));
+    answer->add("tooCommonMacCount", JsonObject::newInt32(mTooCommonMacCount));
+    answer->add("minCommonSsidCount", JsonObject::newInt32(mMinCommonSsidCount));
+    answer->add("numPersonImages", JsonObject::newInt32(mNumPersonImages));
+    answer->add("maxDisplayDelay", JsonObject::newDouble((double)mMaxDisplayDelay/Second));
+    answer->add("saveTempInterval", JsonObject::newDouble((double)mSaveTempInterval/Second));
+    answer->add("saveDataInterval", JsonObject::newDouble((double)mSaveDataInterval/Second));
     // also add some statistics
-    answer->add("numpersons", JsonObject::newInt64(persons.size()));
-    answer->add("nummacs", JsonObject::newInt64(macs.size()));
-    answer->add("numssids", JsonObject::newInt64(ssids.size()));
+    answer->add("numpersons", JsonObject::newInt64(mPersons.size()));
+    answer->add("nummacs", JsonObject::newInt64(mMacs.size()));
+    answer->add("numssids", JsonObject::newInt64(mSsids.size()));
   }
   return answer;
 }
@@ -353,13 +353,13 @@ JsonObjectPtr WifiTrack::dataDump(bool aSsids, bool aMacs, bool aPersons, bool a
   MLMicroSeconds unixTimeOffset = -MainLoop::now()+MainLoop::unixtime();
   JsonObjectPtr ans = JsonObject::newObj();
   // summary info
-  ans->add("numpersons", JsonObject::newInt64(persons.size()));
-  ans->add("nummacs", JsonObject::newInt64(macs.size()));
-  ans->add("numssids", JsonObject::newInt64(ssids.size()));
+  ans->add("numpersons", JsonObject::newInt64(mPersons.size()));
+  ans->add("nummacs", JsonObject::newInt64(mMacs.size()));
+  ans->add("numssids", JsonObject::newInt64(mSsids.size()));
   // persons
   if (aPersons) {
     JsonObjectPtr pans = JsonObject::newArray();
-    for (WTPersonSet::iterator ppos = persons.begin(); ppos!=persons.end(); ++ppos) {
+    for (WTPersonSet::iterator ppos = mPersons.begin(); ppos!=mPersons.end(); ++ppos) {
       JsonObjectPtr p = JsonObject::newObj();
       p->add("lastrssi", JsonObject::newInt32((*ppos)->lastRssi));
       p->add("bestrssi", JsonObject::newInt32((*ppos)->bestRssi));
@@ -397,7 +397,7 @@ JsonObjectPtr WifiTrack::dataDump(bool aSsids, bool aMacs, bool aPersons, bool a
   if (aMacs) {
     // macs
     JsonObjectPtr mans = JsonObject::newObj();
-    for (WTMacMap::iterator mpos = macs.begin(); mpos!=macs.end(); ++mpos) {
+    for (WTMacMap::iterator mpos = mMacs.begin(); mpos!=mMacs.end(); ++mpos) {
       JsonObjectPtr m = JsonObject::newObj();
       if (aOUINames && mpos->second->ouiName) m->add("ouiname", JsonObject::newString(mpos->second->ouiName));
       m->add("lastrssi", JsonObject::newInt32(mpos->second->lastRssi));
@@ -419,7 +419,7 @@ JsonObjectPtr WifiTrack::dataDump(bool aSsids, bool aMacs, bool aPersons, bool a
   if (aSsids) {
     // ssid details
     JsonObjectPtr sans = JsonObject::newObj();
-    for (WTSSidMap::iterator spos = ssids.begin(); spos!=ssids.end(); ++spos) {
+    for (WTSSidMap::iterator spos = mSsids.begin(); spos!=mSsids.end(); ++spos) {
       JsonObjectPtr s = JsonObject::newObj();
       s->add("count", JsonObject::newInt64(spos->second->seenCount));
       s->add("last", JsonObject::newInt64(spos->second->seenLast+unixTimeOffset));
@@ -448,16 +448,16 @@ ErrorPtr WifiTrack::dataImport(JsonObjectPtr aData)
   JsonObjectPtr sobj;
   string ssidstr;
   while (sobjs->nextKeyValue(ssidstr, sobj)) {
-    if (ssidstr.empty() && !rememberWithoutSsid) continue; // skip empty SSID
+    if (ssidstr.empty() && !mRememberWithoutSsid) continue; // skip empty SSID
     WTSSidPtr s;
-    WTSSidMap::iterator spos = ssids.find(ssidstr);
-    if (spos!=ssids.end()) {
+    WTSSidMap::iterator spos = mSsids.find(ssidstr);
+    if (spos!=mSsids.end()) {
       s = spos->second;
     }
     else {
       s = WTSSidPtr(new WTSSid);
       s->ssid = ssidstr;
-      ssids[ssidstr] = s;
+      mSsids[ssidstr] = s;
     }
     JsonObjectPtr o;
     o = sobj->get("hidden");
@@ -479,8 +479,8 @@ ErrorPtr WifiTrack::dataImport(JsonObjectPtr aData)
     bool insertMac = false;
     uint64_t mac = stringToMacAddress(macstr.c_str());
     WTMacPtr m;
-    WTMacMap::iterator mpos = macs.find(mac);
-    if (mpos!=macs.end()) {
+    WTMacMap::iterator mpos = mMacs.find(mac);
+    if (mpos!=mMacs.end()) {
       m = mpos->second;
     }
     else {
@@ -493,7 +493,7 @@ ErrorPtr WifiTrack::dataImport(JsonObjectPtr aData)
     JsonObjectPtr sarr = mobj->get("ssids");
     for (int i=0; i<sarr->arrayLength(); ++i) {
       string ssidstr = sarr->arrayGet(i)->stringValue();
-      if (!rememberWithoutSsid && ssidstr.empty()) {
+      if (!mRememberWithoutSsid && ssidstr.empty()) {
         // empty SSID and we don't want empty ones!
         if (sarr->arrayLength()==1) {
           // also prevent inserting mac if the empty SSID is the only one
@@ -502,20 +502,20 @@ ErrorPtr WifiTrack::dataImport(JsonObjectPtr aData)
         continue; // check next
       }
       WTSSidPtr s;
-      WTSSidMap::iterator spos = ssids.find(ssidstr);
-      if (spos!=ssids.end()) {
+      WTSSidMap::iterator spos = mSsids.find(ssidstr);
+      if (spos!=mSsids.end()) {
         s = spos->second;
       }
       else {
         s = WTSSidPtr(new WTSSid);
         s->ssid = ssidstr;
-        ssids[ssidstr] = s;
+        mSsids[ssidstr] = s;
       }
       m->ssids.insert(s);
       s->macs.insert(m);
     }
     if (insertMac) {
-      macs[mac] = m;
+      mMacs[mac] = m;
     }
     // other props
     JsonObjectPtr o;
@@ -554,14 +554,14 @@ ErrorPtr WifiTrack::dataImport(JsonObjectPtr aData)
       for (int i=0; i<marr->arrayLength(); ++i) {
         string macstr = marr->arrayGet(i)->stringValue();
         uint64_t mac = stringToMacAddress(macstr.c_str());
-        WTMacMap::iterator mpos = macs.find(mac);
-        if (mpos!=macs.end()) {
+        WTMacMap::iterator mpos = mMacs.find(mac);
+        if (mpos!=mMacs.end()) {
           p->macs.insert(mpos->second);
           mpos->second->person = p;
         }
       }
       if (p->macs.size()==0) continue; // not linked to any mac -> invalid, skip
-      persons.insert(p);
+      mPersons.insert(p);
       // other props
       JsonObjectPtr o;
       o = pobj->get("name");
@@ -606,8 +606,8 @@ const char* WifiTrack::ouiName(uint64_t aMac)
 {
   // default to a /24 search
   const char *n = NULL;
-  OUIMap::iterator opos = ouis.find((uint32_t)(aMac>>24));
-  if (opos!=ouis.end()) {
+  OUIMap::iterator opos = mOuis.find((uint32_t)(aMac>>24));
+  if (opos!=mOuis.end()) {
     n = opos->second;
     if ((intptr_t)n<256) {
       // not a pointer, but subtable identifier byte
@@ -615,8 +615,8 @@ const char* WifiTrack::ouiName(uint64_t aMac)
       uint32_t msrch = (uint32_t)((intptr_t)n<<24);
       msrch |= (aMac>>(msrch&0x80000000 ? (48-36) : (48-28))) & 0xFFFFFF;
       n = NULL;
-      OUIMap::iterator opos = ouis.find((uint32_t)(msrch));
-      if (opos!=ouis.end()) {
+      OUIMap::iterator opos = mOuis.find((uint32_t)(msrch));
+      if (opos!=mOuis.end()) {
         n = opos->second;
       }
     }
@@ -699,7 +699,7 @@ static void createOUItable()
 
 void WifiTrack::loadOUIs()
 {
-  if (!ouiNames || !ouis.empty()) return; // prevent re-loading
+  if (!mOuiNames || !mOuis.empty()) return; // prevent re-loading
   OLOG(LOG_NOTICE, "Loading OUIs");
   typedef std::map<string, const char*> NameMap;
   NameMap nameMap;
@@ -720,7 +720,7 @@ void WifiTrack::loadOUIs()
     if (s[0]=='*') {
       uint32_t gbyte;
       if (sscanf(s.c_str()+1, "%u", &gbyte)!=1) continue;
-      ouis[msrch] = (const char *)(intptr_t)gbyte; // not a pointer, but group header byte
+      mOuis[msrch] = (const char *)(intptr_t)gbyte; // not a pointer, but group header byte
     }
     else {
       // always use same string for multiple occurrences
@@ -734,10 +734,10 @@ void WifiTrack::loadOUIs()
       else {
         nameP = npos->second;
       }
-      ouis[msrch] = nameP;
+      mOuis[msrch] = nameP;
     }
   }
-  OLOG(LOG_NOTICE, "Loaded %lu OUIs with %lu distinct names", ouis.size(), nameMap.size());
+  OLOG(LOG_NOTICE, "Loaded %lu OUIs with %lu distinct names", mOuis.size(), nameMap.size());
 }
 
 
@@ -746,13 +746,13 @@ void WifiTrack::loadOUIs()
 
 void WifiTrack::initOperation()
 {
-  restartTicket.cancel(); // cancel pending restarts
+  mRestartTicket.cancel(); // cancel pending restarts
   OLOG(LOG_NOTICE, "initializing wifitrack");
   // display
-  if (directDisplay) {
-    disp = boost::dynamic_pointer_cast<DispMatrix>(FeatureApi::sharedApi()->getFeature("dispmatrix"));
-    if (disp) {
-      disp->setNeedContentHandler(boost::bind(&WifiTrack::needContentHandler, this));
+  if (mDirectDisplay) {
+    mDisp = boost::dynamic_pointer_cast<DispMatrix>(FeatureApi::sharedApi()->getFeature("dispmatrix"));
+    if (mDisp) {
+      mDisp->setNeedContentHandler(boost::bind(&WifiTrack::needContentHandler, this));
     }
   }
   // network scanning
@@ -778,8 +778,8 @@ void WifiTrack::initOperation()
   }
   if (Error::isOK(err)) {
     // assume data secured
-    lastTempAutoSave = MainLoop::now();
-    lastDataAutoSave = lastTempAutoSave;
+    mLastTempAutoSave = MainLoop::now();
+    mLastDataAutoSave = mLastTempAutoSave;
   }
   else {
     OLOG(LOG_ERR, "could not load state: %s", Error::text(err));
@@ -791,16 +791,16 @@ void WifiTrack::initOperation()
 
 void WifiTrack::startScanner()
 {
-  if (!monitorIf.empty()) {
-    string cmd = string_format("tcpdump -e -i %s -s 256", monitorIf.c_str());
-    if (scanBeacons) {
+  if (!mMonitorIf.empty()) {
+    string cmd = string_format("tcpdump -e -i %s -s 256", mMonitorIf.c_str());
+    if (mScanBeacons) {
       string_format_append(cmd, " \\( type mgt subtype probe-req or subtype beacon \\)");
     }
     else {
       string_format_append(cmd, " \\( type mgt subtype probe-req \\)");
     }
-    if (minRssi!=0 && mRadiotapDBOffset!=0) {
-      uint16_t m = minRssi & 0xFF;
+    if (mMinRssi!=0 && mRadiotapDBOffset!=0) {
+      uint16_t m = mMinRssi & 0xFF;
       // Note: offset into radiotap to get rssi is specific to set of radio tap fields supported by the wifi driver
       string_format_append(cmd, " and \\( radio[0x%x] \\> 0x%02X \\)", mRadiotapDBOffset , m);
     }
@@ -812,11 +812,11 @@ void WifiTrack::startScanner()
     #endif
     int resultFd = -1;
     OLOG(LOG_NOTICE, "Starting tcpdump: %s", cmd.c_str());
-    dumpPid = MainLoop::currentMainLoop().fork_and_system(boost::bind(&WifiTrack::dumpEnded, this, _1), cmd.c_str(), true, &resultFd);
-    if (dumpPid>=0 && resultFd>=0) {
-      dumpStream = FdCommPtr(new FdComm(MainLoop::currentMainLoop()));
-      dumpStream->setFd(resultFd);
-      dumpStream->setReceiveHandler(boost::bind(&WifiTrack::gotDumpLine, this, _1), '\n');
+    mDumpPid = MainLoop::currentMainLoop().fork_and_system(boost::bind(&WifiTrack::dumpEnded, this, _1), cmd.c_str(), true, &resultFd);
+    if (mDumpPid>=0 && resultFd>=0) {
+      mDumpStream = FdCommPtr(new FdComm(MainLoop::currentMainLoop()));
+      mDumpStream->setFd(resultFd);
+      mDumpStream->setReceiveHandler(boost::bind(&WifiTrack::gotDumpLine, this, _1), '\n');
     }
   }
   // ready
@@ -827,19 +827,19 @@ void WifiTrack::startScanner()
 void WifiTrack::dumpEnded(ErrorPtr aError)
 {
   OLOG(LOG_NOTICE, "tcpdump terminated with status: %s", Error::text(aError));
-  restartTicket.executeOnce(boost::bind(&WifiTrack::startScanner, this), 5*Second);
+  mRestartTicket.executeOnce(boost::bind(&WifiTrack::startScanner, this), 5*Second);
 }
 
 
 void WifiTrack::restartScanner()
 {
-  if (dumpPid>=0) {
-    kill(dumpPid, SIGTERM);
-    dumpPid = -1;
+  if (mDumpPid>=0) {
+    kill(mDumpPid, SIGTERM);
+    mDumpPid = -1;
     // killing tcpdump should cause dumpEnded() and automatic restart
   }
   // anyway, if not restarted after 15 seconds, try anyway
-  restartTicket.executeOnce(boost::bind(&WifiTrack::startScanner, this), 15*Second);
+  mRestartTicket.executeOnce(boost::bind(&WifiTrack::startScanner, this), 15*Second);
 }
 
 
@@ -852,7 +852,7 @@ void WifiTrack::gotDumpLine(ErrorPtr aError)
     return;
   }
   string line;
-  if (dumpStream->receiveDelimitedString(line)) {
+  if (mDumpStream->receiveDelimitedString(line)) {
     OLOG(LOG_DEBUG, "TCPDUMP: %s", line.c_str());
     // 17:40:22.356367 1.0 Mb/s 2412 MHz 11b -75dBm signal -75dBm signal antenna 0 -109dBm signal antenna 1 BSSID:5c:49:79:6d:28:1a (oui Unknown) DA:5c:49:79:6d:28:1a (oui Unknown) SA:c8:bc:c8:be:0d:0a (oui Unknown) Probe Request (iWay_Fiber_bu725) [1.0* 2.0* 5.5* 11.0* 6.0 9.0 12.0 18.0 Mbit]
     bool decoded = false;
@@ -868,7 +868,7 @@ void WifiTrack::gotDumpLine(ErrorPtr aError)
       if (s!=string::npos) {
         sscanf(line.c_str()+s+1, "%d", &rssi);
       }
-      if (scanBeacons) {
+      if (mScanBeacons) {
         s = line.find("Beacon (", s);
         if (s!=string::npos) {
           // Is a beacon, get SSID
@@ -892,8 +892,8 @@ void WifiTrack::gotDumpLine(ErrorPtr aError)
             e = line.find(") ", s);
             ssid = line.substr(s, e-s);
             // - check min rssi
-            if (rssi<minProcessRssi) {
-              FOCUSOLOG("Too weak: RSSI=%d<%d, MAC=%s, SSID='%s'", rssi, minProcessRssi, macAddressToString(mac,':').c_str(), ssid.c_str());
+            if (rssi<mMinProcessRssi) {
+              FOCUSOLOG("Too weak: RSSI=%d<%d, MAC=%s, SSID='%s'", rssi, mMinProcessRssi, macAddressToString(mac,':').c_str(), ssid.c_str());
             }
             else {
               decoded = true;
@@ -910,8 +910,8 @@ void WifiTrack::gotDumpLine(ErrorPtr aError)
       MLMicroSeconds now = MainLoop::now();
       // - SSID
       bool newSSidForMac = false;
-      WTSSidMap::iterator ssidPos = ssids.find(ssid);
-      if (ssidPos!=ssids.end()) {
+      WTSSidMap::iterator ssidPos = mSsids.find(ssid);
+      if (ssidPos!=mSsids.end()) {
         s = ssidPos->second;
       }
       else {
@@ -919,7 +919,7 @@ void WifiTrack::gotDumpLine(ErrorPtr aError)
         newSSID = true;
         s = WTSSidPtr(new WTSSid);
         s->ssid = ssid;
-        ssids[ssid] = s;
+        mSsids[ssid] = s;
       }
       if (beacon) {
         // just record beacon sighting
@@ -935,17 +935,17 @@ void WifiTrack::gotDumpLine(ErrorPtr aError)
         s->seenLast = now;
         s->seenCount++;
         // - MAC
-        WTMacMap::iterator macPos = macs.find(mac);
-        if (macPos!=macs.end()) {
+        WTMacMap::iterator macPos = mMacs.find(mac);
+        if (macPos!=mMacs.end()) {
           m = macPos->second;
         }
         else {
           // unknown, create
-          if (!s->ssid.empty() || rememberWithoutSsid) {
+          if (!s->ssid.empty() || mRememberWithoutSsid) {
             m = WTMacPtr(new WTMac);
             m->mac = mac;
             m->ouiName = ouiName(mac);
-            macs[mac] = m;
+            mMacs[mac] = m;
           }
         }
         if (m) {
@@ -956,7 +956,7 @@ void WifiTrack::gotDumpLine(ErrorPtr aError)
           if (rssi>m->bestRssi) m->bestRssi = rssi;
           if (rssi<m->worstRssi) m->worstRssi = rssi;
           // - connection (if not empty ssid or empty ssids are allowed)
-          if (!s->ssid.empty() || rememberWithoutSsid) {
+          if (!s->ssid.empty() || mRememberWithoutSsid) {
             if (m->ssids.find(s)==m->ssids.end()) {
               newSSidForMac = true;
               m->ssids.insert(s);
@@ -964,12 +964,12 @@ void WifiTrack::gotDumpLine(ErrorPtr aError)
             s->macs.insert(m);
           }
           // process sighting
-          if (aggregatePersons) {
+          if (mAggregatePersons) {
             processSighting(m, s, newSSidForMac);
           }
         }
       }
-      if (reportSightings && apiNotify) {
+      if (mReportSightings && mApiNotify) {
         JsonObjectPtr message = JsonObject::newObj();
         JsonObjectPtr sighting = JsonObject::newObj();
         sighting->add("type", JsonObject::newString(beacon ? "beacon" : "probe"));
@@ -1020,20 +1020,20 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
     );
   }
   // process
-  if (aNewSSidForMac && aSSid->macs.size()<tooCommonMacCount) {
+  if (aNewSSidForMac && aSSid->macs.size()<mTooCommonMacCount) {
     // a new SSID for this Mac, not too commonly used
     FOCUSOLOG("- not too common (only %lu MACs)", aSSid->macs.size());
     WTMacSet relatedMacs;
     WTMacPtr mostCommonMac;
     WTPersonPtr mostProbablePerson;
-    if (aMac->ssids.size()>=minCommonSsidCount) {
+    if (aMac->ssids.size()>=mMinCommonSsidCount) {
       // has enough ssids overall -> try to find related MACs
       // - search all macs that know the new ssid
       int maxCommonSsids = 0;
       for (WTMacSet::iterator mpos = aSSid->macs.begin(); mpos!=aSSid->macs.end(); ++mpos) {
         // - see how many other ssids this mac shares with the other one
         if (*mpos==aMac) continue; // avoid comparing with myself!
-        if ((*mpos)->ssids.size()<minCommonSsidCount) continue; // shortcut, candidate does not have enough ssids to possibly match at all -> next
+        if ((*mpos)->ssids.size()<mMinCommonSsidCount) continue; // shortcut, candidate does not have enough ssids to possibly match at all -> next
         int commonSsids = 1; // we have at least aSSid in common by definition when we get here!
         for (WTSSidSet::iterator spos = (*mpos)->ssids.begin(); spos!=(*mpos)->ssids.end(); ++spos) {
           if (*spos==aSSid) continue; // shortcut, we know that we have aSSid in common
@@ -1042,7 +1042,7 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
             commonSsids++;
           }
         }
-        if (commonSsids<minCommonSsidCount) continue; // not a candidate
+        if (commonSsids<mMinCommonSsidCount) continue; // not a candidate
         OLOG(LOG_INFO, "- This MAC %s has %d SSIDs in common with %s -> link to same person",
           macAddressToString(aMac->mac,':').c_str(),
           commonSsids,
@@ -1063,8 +1063,8 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
       else {
         // none of the related macs has a person, or we have no related macs at all -> we need to create a person
         person = WTPersonPtr(new WTPerson);
-        persons.insert(person);
-        person->imageIndex = rand() % numPersonImages;
+        mPersons.insert(person);
+        person->imageIndex = rand() % mNumPersonImages;
         person->color = hsbToPixel(rand() % 360);
         // link to this mac (without logging, as this happens for every new Mac seen)
         aMac->person = person;
@@ -1089,7 +1089,7 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
         if (oldPerson && oldPerson!=person) {
           oldPerson->macs.erase(*mpos); // remove this mac from the person
           if (oldPerson->macs.size()==0) {
-            persons.erase(oldPerson); // delete person with zero macs assigned
+            mPersons.erase(oldPerson); // delete person with zero macs assigned
             if (oldPerson->seenFirst<person->seenFirst && !oldPerson->hidden && oldPerson->shownLast!=Never) {
               // now orphaned person was older -> clone its appearance to maintain continuity as much as possible
               person->color = oldPerson->color;
@@ -1152,7 +1152,7 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
       aMac->bestRssi
     );
     // show person?
-    if (!aMac->hidden && !person->hidden && person->lastRssi>=minShowRssi && person->seenLast>person->shownLast+minShowInterval) {
+    if (!aMac->hidden && !person->hidden && person->lastRssi>=mMinShowRssi && person->seenLast>person->shownLast+mMinShowInterval) {
       // determine name
       string nameToShow = person->name;
       if (nameToShow.empty()) {
@@ -1191,13 +1191,13 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
   }
   // check for regular saves
   MLMicroSeconds now = MainLoop::now();
-  if (saveTempInterval!=Never && now>lastTempAutoSave+saveTempInterval) {
-    lastTempAutoSave = now;
+  if (mSaveTempInterval!=Never && now>mLastTempAutoSave+mSaveTempInterval) {
+    mLastTempAutoSave = now;
     OLOG(LOG_NOTICE,">>> auto-saving data to temp file")
     save(Application::sharedApplication()->tempPath(WIFITRACK_STATE_FILE_NAME));
   }
-  if (saveDataInterval!=Never && now>lastDataAutoSave+saveDataInterval) {
-    lastDataAutoSave = now;
+  if (mSaveDataInterval!=Never && now>mLastDataAutoSave+mSaveDataInterval) {
+    mLastDataAutoSave = now;
     OLOG(LOG_NOTICE,">>> auto-saving data to (persistent) data file")
     save(Application::sharedApplication()->dataPath(WIFITRACK_STATE_FILE_NAME));
   }
@@ -1207,11 +1207,11 @@ void WifiTrack::processSighting(WTMacPtr aMac, WTSSidPtr aSSid, bool aNewSSidFor
 
 void WifiTrack::displayEncounter(string aIntro, int aImageIndex, PixelColor aColor, string aName, string aBrand, string aTarget)
 {
-  if (directDisplay && disp) {
-    MLMicroSeconds rst = disp->getRemainingScrollTime(true, true); // purge old views
-    if (rst<maxDisplayDelay) {
+  if (mDirectDisplay && mDisp) {
+    MLMicroSeconds rst = mDisp->getRemainingScrollTime(true, true); // purge old views
+    if (rst<mMaxDisplayDelay) {
       if (OLOGENABLED(LOG_INFO)) {
-        ViewScrollerPtr sc = disp->getDispScroller();
+        ViewScrollerPtr sc = mDisp->getDispScroller();
         ViewStackPtr st;
         if (sc) st = boost::dynamic_pointer_cast<ViewStack>(sc->getScrolledView());
         if (st) {
@@ -1229,30 +1229,14 @@ void WifiTrack::displayEncounter(string aIntro, int aImageIndex, PixelColor aCol
       if (rst<-1*Second) {
         // scrolling is derailed, re-sync
         OLOG(LOG_WARNING, "Scrolling de-synchronized (actual content out of view) -> reset scrolling");
-        disp->resetScroll();
+        mDisp->resetScroll();
       }
-      #if ENABLE_LEGACY_FEATURE_SCRIPTS
-      // use eventscript instead to handle wifiscroll events
-      FeatureApi::SubstitutionMap subst;
-      subst["HASINTRO"] = aIntro.size()>0 ? "1" : "0";
-      subst["INTRO"] = aIntro;
-      subst["IMGIDX"] = string_format("%d", aImageIndex);
-      subst["COLOR"] = pixelToWebColor(aColor, false);
-      subst["HASNAME"] = aName.size()>0 ? "1" : "0";
-      subst["NAME"] = aName;
-      subst["HASBRAND"] = aBrand.size()>0 ? "1" : "0";
-      subst["BRAND"] = aBrand;
-      subst["HASTARGET"] = aTarget.size()>0 ? "1" : "0";
-      subst["TARGET"] = aTarget;
-      loadingContent = false; // because calling script will terminate previous script without callback, make sure loading is not kept in progress (would never get out)
-      FeatureApi::sharedApi()->runJsonFile("scripts/showssid.json", NoOP, &scriptContext, &subst);
-      #endif // ENABLE_LEGACY_FEATURE_SCRIPTS
     }
     else {
-      OLOG(LOG_WARNING, "Cannot push to scroll text (scroll delay would be > %.1f Seconds)", (double)maxDisplayDelay/Second);
+      OLOG(LOG_WARNING, "Cannot push to scroll text (scroll delay would be > %.1f Seconds)", (double)mMaxDisplayDelay/Second);
     }
   }
-  if (apiNotify) {
+  if (mApiNotify) {
     JsonObjectPtr message = JsonObject::newObj();
     JsonObjectPtr personinfo = JsonObject::newObj();
     personinfo->add("HASINTRO", JsonObject::newString(aIntro.size()>0 ? "1" : "0"));
@@ -1273,16 +1257,9 @@ void WifiTrack::displayEncounter(string aIntro, int aImageIndex, PixelColor aCol
 
 bool WifiTrack::needContentHandler()
 {
-  if (!loadingContent) {
-    loadingContent = true;
+  if (!mLoadingContent) {
+    mLoadingContent = true;
     FOCUSOLOG("Display needs content - calling wifipause script");
-    #if ENABLE_LEGACY_FEATURE_SCRIPTS
-    ErrorPtr err = FeatureApi::sharedApi()->runJsonFile("scripts/wifipause.json", boost::bind(&WifiTrack::contentLoaded, this), &scriptContext, NULL);
-    if (!Error::isOK(err)) {
-      loadingContent = false;
-      OLOG(LOG_WARNING, "wifipause script could not be run: %s", Error::text(err));
-    }
-    #endif
     // report
     JsonObjectPtr message = JsonObject::newObj();
     message->add("event", JsonObject::newString("needcontent"));
@@ -1294,7 +1271,7 @@ bool WifiTrack::needContentHandler()
 
 void WifiTrack::contentLoaded()
 {
-  loadingContent = false;
+  mLoadingContent = false;
   FOCUSOLOG("Content loading complete");
 }
 

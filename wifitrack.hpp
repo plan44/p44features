@@ -124,47 +124,44 @@ namespace p44 {
   {
     typedef Feature inherited;
 
-    string monitorIf;
-    int dumpPid;
-    FdCommPtr dumpStream;
+    string mMonitorIf;
+    int mDumpPid;
+    FdCommPtr mDumpStream;
 
-    MLTicket restartTicket;
-    #if ENABLE_LEGACY_FEATURE_SCRIPTS
-    FeatureJsonScriptContextPtr scriptContext;
-    #endif
+    MLTicket mRestartTicket;
 
-    WTMacMap macs;
-    WTSSidMap ssids;
-    WTPersonSet persons;
+    WTMacMap mMacs;
+    WTSSidMap mSsids;
+    WTPersonSet mPersons;
 
-    OUIMap ouis;
+    OUIMap mOuis;
 
     // settings
-    bool ouiNames;
-    bool reportSightings;
-    bool aggregatePersons;
-    bool rememberWithoutSsid;
-    MLMicroSeconds minShowInterval;
-    int minRssi; ///< minimal rssi, will be passed to tcpdump as packet filter if not 0
-    bool scanBeacons; ///< if set, beacons will be processed and remembered in addition to probe requests
-    int minProcessRssi; ///< minimal rssi to process packet
+    bool mOuiNames;
+    bool mReportSightings;
+    bool mAggregatePersons;
+    bool mRememberWithoutSsid;
+    MLMicroSeconds mMinShowInterval;
+    int mMinRssi; ///< minimal rssi, will be passed to tcpdump as packet filter if not 0
+    bool mScanBeacons; ///< if set, beacons will be processed and remembered in addition to probe requests
+    int mMinProcessRssi; ///< minimal rssi to process packet
     int mRadiotapDBOffset; ///< offset of dBm info in radiotap date (dependent on wifi driver)
-    int minShowRssi; ///< minimal rssi for triggering to show a person
-    int tooCommonMacCount;
-    int minCommonSsidCount;
-    int numPersonImages;
-    MLMicroSeconds maxDisplayDelay;
+    int mMinShowRssi; ///< minimal rssi for triggering to show a person
+    int mTooCommonMacCount;
+    int mMinCommonSsidCount;
+    int mNumPersonImages;
+    MLMicroSeconds mMaxDisplayDelay;
 
-    MLMicroSeconds saveTempInterval;
-    MLMicroSeconds saveDataInterval;
+    MLMicroSeconds mSaveTempInterval;
+    MLMicroSeconds mSaveDataInterval;
 
-    MLMicroSeconds lastTempAutoSave;
-    MLMicroSeconds lastDataAutoSave;
+    MLMicroSeconds mLastTempAutoSave;
+    MLMicroSeconds mLastDataAutoSave;
 
-    bool directDisplay; ///< if set, local dispmatrix is used for display
-    bool apiNotify; ///< if set, send persons back to feature API client
-    DispMatrixPtr disp;
-    bool loadingContent;
+    bool mDirectDisplay; ///< if set, local dispmatrix is used for display
+    bool mApiNotify; ///< if set, send persons back to feature API client
+    DispMatrixPtr mDisp;
+    bool mLoadingContent;
 
   public:
 
