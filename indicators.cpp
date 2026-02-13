@@ -208,6 +208,7 @@ ErrorPtr Indicators::processRequest(ApiRequestPtr aRequest)
       }
       if (!effectView) return TextError::err("No valid indicator effect");
       // now run
+      effectView->setHaltWhenHidden(false); // by default, views are in haltWhenHidden mode and would not animate out of alpha==0!
       runEffect(effectView, t, data);
       return Error::ok();
     }
