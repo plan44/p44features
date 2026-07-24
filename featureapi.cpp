@@ -580,8 +580,13 @@ void FeatureApi::start(const string aApiPort, int aProtocolFamily)
   mApiServer = SocketCommPtr(new SocketComm(MainLoop::currentMainLoop()));
   mApiServer->setConnectionParams(NULL, aApiPort.c_str(), SOCK_STREAM, aProtocolFamily);
   mApiServer->setAllowNonlocalConnections(true);
-  mApiServer->startServer(boost::bind(&FeatureApi::apiConnectionHandler, this, _1), 10);
-  OLOG(LOG_INFO, "listening on port %s", aApiPort.c_str());
+  ErrorPtr err = mApiServer->startServer(boost::bind(&FeatureApi::apiConnectionHandler, this, _1), 10);
+  if (Error::notOK(err)) {
+    OLOG(LOG_ERR, "Cannot start config API server: %s", Error::text(err));
+  }
+  else {
+    OLOG(LOG_INFO, "listening on port %s", aApiPort.c_str());
+  }
 }
 
 
