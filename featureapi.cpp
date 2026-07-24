@@ -405,7 +405,7 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
         mUnhandledRequestSource.sendEvent(new FeatureRequestObj(aRequest));
         return ErrorPtr(); // no default response, event handler must send it
       }
-      #endif
+      #endif // ENABLE_P44SCRIPT
       return FeatureApiError::err("unknown feature '%s'", featurename.c_str());
     }
     if (!f->second->isInitialized()) {
@@ -472,7 +472,7 @@ ErrorPtr FeatureApi::processRequest(ApiRequestPtr aRequest)
       mUnhandledRequestSource.sendEvent(new FeatureRequestObj(aRequest));
       return ErrorPtr(); // no default response, event handler must send it
     }
-    #endif
+    #endif // ENABLE_P44SCRIPT
     else {
       return FeatureApiError::err("unknown global command '%s'", cmd.c_str());
     }
@@ -649,31 +649,31 @@ void FeatureApi::addFeaturesFromCommandLine(
     AnalogIoPtr pwmDimmer = AnalogIoPtr(new AnalogIo(a->getOption("pwmdimmer","missing"), true, 0)); // off to begin with
     sharedApi()->addFeature(FeaturePtr(new Light(pwmDimmer, doStart)));
   }
-  #endif
+  #endif // ENABLE_FEATURE_LIGHT
   #if ENABLE_FEATURE_INPUTS
   // - inputs (instantiate only with command line option, as it allows free use of GPIOs etc.)
   if (a->getOption("inputs")) {
     sharedApi()->addFeature(FeaturePtr(new Inputs));
   }
-  #endif
+  #endif // ENABLE_FEATURE_INPUTS
   #if ENABLE_FEATURE_KEYEVENTS
   // - keyboard events from linux input devices
   if (a->getStringOption("keyevents", s)) {
     sharedApi()->addFeature(FeaturePtr(new KeyEvents(s)));
   }
-  #endif
+  #endif // ENABLE_FEATURE_KEYEVENTS
   #if ENABLE_FEATURE_DISPMATRIX
   // - dispmatrix
   if (a->getStringOption("dispmatrix", s)) {
     if (aLedChainArrangement) sharedApi()->addFeature(FeaturePtr(new DispMatrix(aLedChainArrangement, s)));
   }
-  #endif
+  #endif // ENABLE_FEATURE_DISPMATRIX
   #if ENABLE_FEATURE_INDICATORS
   // - indicators
   if (a->getOption("indicators")) {
     if (aLedChainArrangement) sharedApi()->addFeature(FeaturePtr(new Indicators(aLedChainArrangement)));
   }
-  #endif
+  #endif // ENABLE_FEATURE_INDICATORS
   #if ENABLE_FEATURE_RFIDS
   // - RFIDs
   if (a->getStringOption("rfidspibus", s)) {
@@ -721,7 +721,7 @@ void FeatureApi::addFeaturesFromCommandLine(
     a->getIntOption("wifidboffs",rtdbo);
     sharedApi()->addFeature(FeaturePtr(new WifiTrack(a->getOption("wifimonif",""), rtdbo, doStart)));
   }
-  #endif
+  #endif // ENABLE_FEATURE_WIFITRACK
   #if ENABLE_FEATURE_HERMEL
   // - hermel
   if (a->getIntOption("hermel", doStart)) {
@@ -729,7 +729,7 @@ void FeatureApi::addFeaturesFromCommandLine(
     AnalogIoPtr pwmRight = AnalogIoPtr(new AnalogIo(a->getOption("pwmright","missing"), true, 0)); // off to begin with
     sharedApi()->addFeature(FeaturePtr(new HermelShoot(pwmLeft, pwmRight, doStart)));
   }
-  #endif
+  #endif // ENABLE_FEATURE_HERMEL
   #if ENABLE_FEATURE_NEURON
   #warning "legacy direct LEDchain access"
   // - neuron
@@ -742,7 +742,7 @@ void FeatureApi::addFeaturesFromCommandLine(
       s
     )));
   }
-  #endif
+  #endif // ENABLE_FEATURE_NEURON
   #if ENABLE_FEATURE_MIXLOOP
   #warning "legacy direct LEDchain access"
   // - mixloop
@@ -753,7 +753,7 @@ void FeatureApi::addFeaturesFromCommandLine(
       doStart
     )));
   }
-  #endif
+  #endif // ENABLE_FEATURE_MIXLOOP
   // now, start API if port is selected
   string apiport;
   if (a->getStringOption("featureapiport", apiport)) {
